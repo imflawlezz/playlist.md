@@ -1,8 +1,11 @@
-PREFIX ?= /usr/local
-ROOT   := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
-DIST   := $(ROOT)/dist
-BIN    := $(DIST)/playlist-md
-ASSET  := $(ROOT)/go/assets/playlist-md-core
+PREFIX  ?= /usr/local
+VERSION ?= 1.0.0
+# Dots look like a file extension to some tools; use dashes in the artifact name.
+VERSION_TAG := $(subst .,-,$(VERSION))
+ROOT    := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
+DIST    := $(ROOT)/dist
+BIN     := $(DIST)/playlist-md-v$(VERSION_TAG)
+ASSET   := $(ROOT)/go/assets/playlist-md-core
 CORE_ARM := $(ROOT)/.build/arm64-apple-macosx/release/playlist-md-core
 CORE_X86 := $(ROOT)/.build/x86_64-apple-macosx/release/playlist-md-core
 

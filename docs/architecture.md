@@ -22,7 +22,7 @@ Go never talks to MusicKit. Swift never draws the TUI. The boundary is process s
 ## Packaging
 
 1. `make` builds `playlist-md-core` for arm64 and x86_64, then `lipo`s them into `go/assets/playlist-md-core`.
-2. Go embeds that file (`//go:embed`) and builds a universal `dist/playlist-md` the same way.
+2. Go embeds that file (`//go:embed`) and builds a universal `dist/playlist-md-v<version-with-dashes>` the same way.
 3. At runtime, the launcher writes the embedded core to a content-addressed path under the user cache (`~/Library/Caches/playlist-md/<hash>/playlist-md-core` on macOS) unless `PLAYLIST_MD_CORE` points at a local binary.
 
 The core embeds `Sources/PlaylistMDCore/Info.plist` via linker `__info_plist` so MusicKit can associate the process with a bundle ID and usage description.

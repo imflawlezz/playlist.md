@@ -26,7 +26,7 @@ Details: [docs/architecture.md](docs/architecture.md). Core JSON CLI: [docs/core
 make
 ```
 
-Produces a universal (arm64 + x86_64) binary at `dist/playlist-md`.
+Produces a universal (arm64 + x86_64) binary at `dist/playlist-md-v1-0-0`.
 
 ```bash
 make install   # PREFIX=/usr/local by default → $PREFIX/bin/playlist-md
@@ -132,7 +132,7 @@ Sources/
   PlaylistMDCore/           Swift library
   playlist_md_core/         Swift engine entry
 Tests/
-Makefile                    builds dist/playlist-md
+Makefile                    builds dist/playlist-md-v*
 docs/                       architecture, protocol, ADRs
 LICENSE                     MIT
 ```
