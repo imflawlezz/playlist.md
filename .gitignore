@@ -1,0 +1,7 @@
+.build/
+.swiftpm/
+.DS_Store
+*.xcodeproj
+DerivedData/
+dist/
+go/assets/playlist-md-core
