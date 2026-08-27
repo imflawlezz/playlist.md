@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Bordered TUI frame with the help bar pinned to the bottom of the window
+- Clickable author GitHub link in the title (OSC 8; a click opens the page in supporting terminals)
+- Terminal auto-resize to fit content; **Ctrl+L** repairs the display after a manual resize or garbled redraw
+- GitHub Actions CI on push/PR and tag (`v*`) releases of the universal macOS binary (SHA-256 checksum)
+
+### Changed
+
+- Settings uses labeled rows and segmented controls for playlists per page; output folder is edited inline (**Enter** on the row)
+- Home, search, inspect, and keybindings use numbered lists, **Playlists:** / **Actions** sections, a sparse footer, and grouped **?** help; selected playlists show **✓** on the right
+- Home shows Apple Music authorization status again; export / open-folder actions are separated from Settings, Repair TUI, Keybindings, and Quit
+- Release binary name includes the version with dashes (`dist/playlist-md-v1-1-0`)
+
+### Fixed
+
+- Inspect pages matching tracks only when a search is active, so paging no longer leaves phantom rows or a split cursor
+
 ## [1.0.0] — 2026-08-24
 
 ### Added
