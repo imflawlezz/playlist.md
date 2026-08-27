@@ -40,7 +40,7 @@ jobs:
         run: |
           ver="${GITHUB_REF_NAME#v}"
           name="playlist-md-v${ver//./-}"
-          shasum -a 256 "dist/${name}" | tee "dist/${name}.sha256"
+          (cd dist && shasum -a 256 "${name}" > checksums.txt)
 
       - name: Publish GitHub Release
         env:
@@ -51,6 +51,6 @@ jobs:
           bin="dist/${name}"
           test -x "$bin"
           gh release create "${GITHUB_REF_NAME}" \
-            --title "playlist-md ${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
             --notes-file "$RUNNER_TEMP/release-notes.md" \
-            "$bin" "${bin}.sha256"
+            "$bin" "dist/checksums.txt"
