@@ -7,27 +7,31 @@ import (
 )
 
 type keyBind struct {
-	Action string
-	Key    string
-	Also   string
+	Action  string
+	Key     string
+	Also    string
+	Section string
 }
 
-func footerFor(s screen) [][2]string {
+func footerFor(s screen, editing bool) [][2]string {
 	switch s {
 	case screenHome:
-		return [][2]string{{"↑↓", "up/down"}, {"space", "select"}, {"enter", "open"}, {"/", "search"}, {"←→", "page"}, {"?", "keys"}, {"q", "quit"}}
+		return [][2]string{{"space", "select"}, {"enter", "open"}, {"/", "search"}, {"q", "quit"}}
 	case screenSearch:
-		return [][2]string{{"enter", "apply"}, {"esc", "clear"}, {"↑↓", "scroll"}}
+		return [][2]string{{"enter", "apply"}, {"esc", "back"}}
 	case screenOutput:
-		return [][2]string{{"enter", "confirm"}, {"esc", "back"}}
+		return [][2]string{{"enter", "save"}, {"esc", "back"}}
 	case screenSettings:
-		return [][2]string{{"↑↓", "up/down"}, {"←→", "change"}, {"enter", "confirm"}, {"esc", "back"}, {"?", "keys"}, {"q", "quit"}}
+		if editing {
+			return [][2]string{{"enter", "save"}, {"esc", "cancel"}}
+		}
+		return [][2]string{{"enter", "edit"}, {"esc", "back"}, {"q", "quit"}}
 	case screenExport:
 		return [][2]string{{"ctrl+c", "quit"}}
 	case screenDone:
-		return [][2]string{{"↑↓", "up/down"}, {"enter", "confirm"}, {"esc", "back"}, {"q", "quit"}}
+		return [][2]string{{"enter", "confirm"}, {"q", "quit"}}
 	case screenInspect:
-		return [][2]string{{"↑↓", "up/down"}, {"←→", "page"}, {"space", "select"}, {"esc", "back"}, {"q", "quit"}}
+		return [][2]string{{"space", "select"}, {"esc", "back"}, {"q", "quit"}}
 	case screenKeys:
 		return [][2]string{{"esc", "back"}, {"q", "quit"}}
 	default:
@@ -37,64 +41,63 @@ func footerFor(s screen) [][2]string {
 
 func keysFor(s screen) []keyBind {
 	nav := []keyBind{
-		{"Move up", "↑", "k"},
-		{"Move down", "↓", "j"},
+		{Section: "Move", Action: "Move up / down", Key: "↑ ↓", Also: "Up / Down"},
+		{Section: "Move", Action: "Change value / page", Key: "← →", Also: "Left / Right"},
+		{Section: "Move", Action: "Next section", Key: "Tab"},
 	}
 	app := []keyBind{
-		{"Back / cancel", "Esc", ""},
-		{"Quit", "q", "Ctrl+C"},
-		{"Keybindings", "?", ""},
+		{Section: "App", Action: "Settings", Key: "s"},
+		{Section: "App", Action: "Open folder", Key: "o"},
+		{Section: "App", Action: "Repair TUI", Key: "Ctrl+L"},
+		{Section: "App", Action: "Keybindings", Key: "?"},
+		{Section: "App", Action: "Quit", Key: "q"},
 	}
 	switch s {
 	case screenHome:
 		out := append([]keyBind{}, nav...)
 		out = append(out,
-			keyBind{"Toggle playlist", "Space", ""},
-			keyBind{"Inspect playlist", "Enter", ""},
-			keyBind{"Search", "/", ""},
-			keyBind{"Previous page", "←", "h"},
-			keyBind{"Next page", "→", "l"},
-			keyBind{"Select all", "a", ""},
-			keyBind{"Clear selection", "n", "c"},
-			keyBind{"Next section", "Tab", ""},
-			keyBind{"Open folder", "o", ""},
-			keyBind{"Reload", "r", ""},
-			keyBind{"Settings", "s", ""},
+			keyBind{Section: "List", Action: "Toggle playlist", Key: "Space"},
+			keyBind{Section: "List", Action: "Inspect playlist", Key: "Enter"},
+			keyBind{Section: "List", Action: "Search", Key: "/"},
+			keyBind{Section: "List", Action: "Select all", Key: "a"},
+			keyBind{Section: "List", Action: "Clear selection", Key: "n", Also: "c"},
+			keyBind{Section: "List", Action: "Reload", Key: "r"},
 		)
 		return append(out, app...)
 	case screenSearch:
 		return []keyBind{
-			{"Apply filter", "Enter", ""},
-			{"Clear / back", "Esc", ""},
-			{"Move / scroll", "↑", "↓"},
+			{Section: "Search", Action: "Apply filter", Key: "Enter"},
+			{Section: "Search", Action: "Clear / back", Key: "Escape"},
+			{Section: "Move", Action: "Move / scroll", Key: "↑ ↓"},
 		}
 	case screenInspect:
-		out := append([]keyBind{}, nav...)
+		out := append([]keyBind{}, nav[:2]...)
 		out = append(out,
-			keyBind{"Previous page", "←", "h"},
-			keyBind{"Next page", "→", "l"},
-			keyBind{"Toggle playlist", "Space", ""},
-			keyBind{"Back", "Esc", ""},
-			keyBind{"Quit", "q", "Ctrl+C"},
+			keyBind{Section: "List", Action: "Toggle playlist", Key: "Space"},
+			keyBind{Section: "App", Action: "Repair TUI", Key: "Ctrl+L"},
+			keyBind{Section: "App", Action: "Back", Key: "Escape"},
+			keyBind{Section: "App", Action: "Quit", Key: "q"},
 		)
 		return out
-	case screenOutput:
+	case screenSettings:
 		return []keyBind{
-			{"Confirm", "Enter", ""},
-			{"Back", "Esc", ""},
+			{Section: "Move", Action: "Move up / down", Key: "↑ ↓", Also: "Up / Down"},
+			{Section: "Settings", Action: "Change value", Key: "← →", Also: "Left / Right"},
+			{Section: "Settings", Action: "Edit / confirm", Key: "Enter"},
+			{Section: "App", Action: "Repair TUI", Key: "Ctrl+L"},
+			{Section: "App", Action: "Back", Key: "Escape"},
+			{Section: "App", Action: "Quit", Key: "q"},
 		}
 	case screenExport:
-		return []keyBind{{"Quit", "Ctrl+C", "q"}}
+		return []keyBind{{Section: "App", Action: "Quit", Key: "Ctrl+C", Also: "q"}}
 	case screenDone:
 		return []keyBind{
-			{"Confirm", "Enter", ""},
-			{"Back", "Esc", ""},
-			{"Quit", "q", "Ctrl+C"},
+			{Section: "App", Action: "Confirm", Key: "Enter"},
+			{Section: "App", Action: "Back", Key: "Escape"},
+			{Section: "App", Action: "Quit", Key: "q"},
 		}
 	default:
-		out := append([]keyBind{}, nav...)
-		out = append(out, keyBind{"Confirm", "Enter", ""})
-		return append(out, app...)
+		return append(nav, app...)
 	}
 }
 
@@ -112,8 +115,16 @@ func viewKeyHelp(from screen) string {
 		}
 	}
 	var b strings.Builder
-	b.WriteString(titleStyle.Render("Keybindings") + "\n\n")
+	b.WriteString(labelStyle.Render("Keybindings") + "\n")
+	prev := ""
 	for i, row := range rows {
+		if row.Section != prev {
+			b.WriteString("\n")
+			if row.Section != "" {
+				b.WriteString(dimStyle.Render(row.Section) + "\n")
+			}
+			prev = row.Section
+		}
 		keys := rendered[i]
 		pad := keyW + 4 - lipgloss.Width(keys)
 		if pad < 2 {
@@ -128,7 +139,7 @@ func plainKeys(row keyBind) string {
 	if row.Also == "" {
 		return row.Key
 	}
-	return row.Key + ", " + row.Also
+	return row.Key + "  " + row.Also
 }
 
 func helpBar(items [][2]string) string {

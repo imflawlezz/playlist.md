@@ -59,6 +59,7 @@ type section int
 const (
 	secPlaylists section = iota
 	secActions
+	secApp
 	secSettings
 	secDone
 )
@@ -68,14 +69,19 @@ type rowKind int
 const (
 	rowPlaylist rowKind = iota
 	rowSpacer
+	rowLabel
 	rowAuthorize
 	rowLoadPlaylists
 	rowExport
 	rowClearSelection
 	rowOpenFolder
 	rowSettings
+	rowRepair
+	rowKeys
+	rowQuit
 	rowSettingPerPage
 	rowSettingOutput
+	rowSettingBack
 	rowDoneOpen
 	rowDoneContinue
 )
@@ -88,8 +94,9 @@ type navRow struct {
 	hintTitle   string
 	hintArtist  string
 	destructive bool
+	index       int
 }
 
 func (r navRow) focusable() bool {
-	return r.kind != rowSpacer
+	return r.kind != rowSpacer && r.kind != rowLabel
 }

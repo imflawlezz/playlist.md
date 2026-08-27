@@ -40,7 +40,7 @@ func main() {
 	}
 
 	m := ui.NewModel(client, notify)
-	program = tea.NewProgram(m, tea.WithAltScreen())
+	program = tea.NewProgram(m, tea.WithAltScreen(), tea.WithMouseCellMotion())
 
 	if err := program.Start(); err != nil {
 		fmt.Fprintln(os.Stderr, err)

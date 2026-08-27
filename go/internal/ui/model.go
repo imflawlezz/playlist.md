@@ -43,6 +43,14 @@ type Model struct {
 	indexing      bool
 	didAutoLoad   bool
 	inputPurpose  string
+	editing       bool
+	editBuf       string
+
+	wantH     int
+	wantW     int
+	haveSize  bool
+	userSized bool
+	openURL   func(string) error
 }
 
 func NewModel(client *engine.Client, notify func(tea.Msg)) Model {
@@ -72,20 +80,53 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.update(msg)
+	mm, ok := next.(Model)
+	if !ok {
+		return next, cmd
+	}
+	return mm, tea.Batch(cmd, mm.resizeIfNeeded())
+}
+
+func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
+		if m.haveSize {
+			echo := m.wantH > 0 && msg.Height == m.wantH &&
+				(m.wantW == 0 || msg.Width == m.wantW)
+			if !echo && (msg.Width != m.width || msg.Height != m.height) {
+				m.userSized = true
+			}
+		}
 		m.width = msg.Width
 		m.height = msg.Height
-		m.input.Width = max(20, m.width-8)
+		m.haveSize = true
+		m.input.Width = max(20, m.contentWidth())
 		m.clampInspectCursor()
 		return m.ensureCursor(), nil
+
+	case tea.MouseMsg:
+		if msg.Button != tea.MouseButtonLeft || msg.Action != tea.MouseActionPress {
+			return m, nil
+		}
+		if u := m.linkAt(msg.X, msg.Y); u != "" {
+			fn := m.openURL
+			if fn == nil {
+				fn = openURL
+			}
+			_ = fn(u)
+		}
+		return m, nil
 
 	case tea.KeyMsg:
 		key := msg.String()
 		if key == "ctrl+c" {
 			return m, tea.Quit
 		}
-		if key == "?" && m.screen != screenOutput && m.screen != screenSearch &&
+		if key == "ctrl+l" && m.screen != screenOutput && m.screen != screenSearch {
+			return m.repairDisplay()
+		}
+		if key == "?" && !m.editing && m.screen != screenOutput && m.screen != screenSearch &&
 			m.screen != screenExport && m.screen != screenKeys {
 			return m.openKeys(), nil
 		}
@@ -237,6 +278,13 @@ func (m Model) openKeys() Model {
 	return m
 }
 
+func (m Model) repairDisplay() (tea.Model, tea.Cmd) {
+	m.userSized = false
+	m.wantH = 0
+	m.wantW = 0
+	return m.ensureCursor(), tea.Batch(tea.ClearScreen, tea.WindowSize())
+}
+
 func (m Model) updateHome(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q":
@@ -287,6 +335,8 @@ func (m Model) updateHome(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "s":
 		m.screen = screenSettings
 		m.cursor = 0
+		m.editing = false
+		m.editBuf = ""
 		m.err = ""
 		return m.ensureCursor(), nil
 	case "enter":
@@ -419,19 +469,32 @@ func (m Model) searchWindow() []playlistHit {
 
 func (m Model) homeRows() []navRow {
 	var rows []navRow
-	for _, hit := range m.visibleHits() {
-		rows = append(rows, navRow{
-			kind:       rowPlaylist,
-			label:      hit.Playlist.Name,
-			playlistID: hit.Playlist.ID,
-			section:    secPlaylists,
-			hintTitle:  hit.Title,
-			hintArtist: hit.Artist,
-		})
+	rows = append(rows, navRow{kind: rowLabel, label: "Playlists", section: secPlaylists})
+	hits := m.visibleHits()
+	if len(m.playlists) == 0 {
+		msg := "(empty — authorize Apple Music)"
+		if m.status == "authorized" {
+			msg = "(empty — load playlists)"
+		}
+		rows = append(rows, navRow{kind: rowLabel, label: dimStyle.Render(msg)})
+	} else if len(hits) == 0 {
+		rows = append(rows, navRow{kind: rowLabel, label: dimStyle.Render("(empty — no match)")})
+	} else {
+		start, _ := m.pageBounds()
+		for i, hit := range hits {
+			rows = append(rows, navRow{
+				kind:       rowPlaylist,
+				label:      hit.Playlist.Name,
+				playlistID: hit.Playlist.ID,
+				section:    secPlaylists,
+				hintTitle:  hit.Title,
+				hintArtist: hit.Artist,
+				index:      start + i,
+			})
+		}
 	}
-	if len(rows) > 0 {
-		rows = append(rows, navRow{kind: rowSpacer})
-	}
+	rows = append(rows, navRow{kind: rowSpacer})
+	rows = append(rows, navRow{kind: rowLabel, label: "Actions", section: secActions})
 
 	if m.status != "authorized" {
 		rows = append(rows, navRow{kind: rowAuthorize, label: "Authorize", section: secActions})
@@ -450,20 +513,26 @@ func (m Model) homeRows() []navRow {
 	}
 	rows = append(rows,
 		navRow{kind: rowOpenFolder, label: "Open folder", section: secActions},
-		navRow{kind: rowSettings, label: "Settings", section: secActions},
+		navRow{kind: rowSpacer},
+		navRow{kind: rowSettings, label: "Settings", section: secApp},
+		navRow{kind: rowRepair, label: "Repair TUI", section: secApp},
+		navRow{kind: rowKeys, label: "Keybindings", section: secApp},
+		navRow{kind: rowQuit, label: "Quit", section: secApp},
 	)
 	return rows
 }
 
 func (m Model) settingsRows() []navRow {
 	return []navRow{
-		{kind: rowSettingPerPage, label: fmt.Sprintf("Playlists per page  ·  %d", m.config.PlaylistsPerPage), section: secSettings},
-		{kind: rowSettingOutput, label: "Change output", section: secSettings},
+		{kind: rowSettingOutput, label: "Output folder", section: secSettings},
+		{kind: rowSettingPerPage, label: "Playlists per page", section: secSettings},
+		{kind: rowSettingBack, label: "Back", section: secSettings},
 	}
 }
 
 func (m Model) doneRows() []navRow {
 	return []navRow{
+		{kind: rowLabel, label: "Actions", section: secDone},
 		{kind: rowDoneOpen, label: "Open folder", section: secDone},
 		{kind: rowDoneContinue, label: "Continue", section: secDone},
 	}
@@ -484,7 +553,7 @@ func (m Model) currentRows() []navRow {
 
 func (m Model) searchRows() []navRow {
 	var rows []navRow
-	for _, hit := range m.searchWindow() {
+	for i, hit := range m.searchWindow() {
 		rows = append(rows, navRow{
 			kind:       rowPlaylist,
 			label:      hit.Playlist.Name,
@@ -492,6 +561,7 @@ func (m Model) searchRows() []navRow {
 			section:    secPlaylists,
 			hintTitle:  hit.Title,
 			hintArtist: hit.Artist,
+			index:      m.searchOff + i,
 		})
 	}
 	return rows
@@ -611,11 +681,11 @@ func (m Model) homeCursorSlot() (listIndex, actionIndex int) {
 	}
 	action := 0
 	for i := 0; i < m.cursor && i < len(rows); i++ {
-		if rows[i].section == secActions && rows[i].focusable() {
+		if isHomeAction(rows[i]) {
 			action++
 		}
 	}
-	if rows[m.cursor].section == secActions {
+	if isHomeAction(rows[m.cursor]) {
 		return -1, action
 	}
 	return -1, -1
@@ -645,7 +715,7 @@ func (m *Model) restoreHomeCursor(listIndex, actionIndex int) {
 	seen := 0
 	last := m.cursor
 	for i, row := range rows {
-		if row.section == secActions && row.focusable() {
+		if isHomeAction(row) {
 			last = i
 			if seen == actionIndex {
 				m.cursor = i
@@ -709,10 +779,20 @@ func (m Model) activate() (tea.Model, tea.Cmd) {
 	case rowSettings:
 		m.screen = screenSettings
 		m.cursor = 0
+		m.editing = false
+		m.editBuf = ""
 		m.err = ""
 		return m.ensureCursor(), nil
 	case rowSettingPerPage:
 		return m.adjustPerPage(1)
+	case rowSettingBack:
+		return m.closeSettings()
+	case rowRepair:
+		return m.repairDisplay()
+	case rowKeys:
+		return m.openKeys(), nil
+	case rowQuit:
+		return m, tea.Quit
 	case rowDoneContinue:
 		return m.leaveDone()
 	}
@@ -742,20 +822,67 @@ func (m *Model) jumpInspectToQuery() {
 		return
 	}
 	q := normalizeQuery(m.query)
-	if q == "" {
+	if q == "" || !m.inspectHasTrackMatch(q) {
 		return
 	}
-	for i, t := range m.detail.Tracks {
+	m.clampInspectCursor()
+}
+
+func (m Model) inspectTrackList() []engine.Track {
+	if m.detail == nil {
+		return nil
+	}
+	q := normalizeQuery(m.query)
+	if q == "" || !m.inspectHasTrackMatch(q) {
+		return m.detail.Tracks
+	}
+	var hits []engine.Track
+	for _, t := range m.detail.Tracks {
 		if trackMatches(t, q) {
-			size := m.pageSize()
-			if size < 1 {
-				size = 12
-			}
-			m.inspectPage = i / size
-			m.inspectCursor = i % size
-			return
+			hits = append(hits, t)
 		}
 	}
+	return hits
+}
+
+func (m Model) inspectPageCount() int {
+	n := len(m.inspectTrackList())
+	if n == 0 {
+		return 0
+	}
+	return (n + m.pageSize() - 1) / m.pageSize()
+}
+
+func (m Model) inspectPageBounds() (int, int) {
+	list := m.inspectTrackList()
+	if len(list) == 0 {
+		return 0, 0
+	}
+	size := m.pageSize()
+	if size < 1 {
+		size = 1
+	}
+	pages := (len(list) + size - 1) / size
+	page := clamp(m.inspectPage, 0, pages-1)
+	start := page * size
+	end := start + size
+	if end > len(list) {
+		end = len(list)
+	}
+	return start, end
+}
+
+func isHomeAction(row navRow) bool {
+	return row.focusable() && (row.section == secActions || row.section == secApp)
+}
+
+func (m Model) inspectVisibleTracks() []engine.Track {
+	list := m.inspectTrackList()
+	if len(list) == 0 {
+		return nil
+	}
+	start, end := m.inspectPageBounds()
+	return list[start:end]
 }
 
 func (m Model) updateInspect(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -813,41 +940,18 @@ func (m Model) inspectPageBy(delta int) Model {
 	return m
 }
 
-func (m Model) inspectPageCount() int {
-	if m.detail == nil || len(m.detail.Tracks) == 0 {
-		return 0
-	}
-	return (len(m.detail.Tracks) + m.pageSize() - 1) / m.pageSize()
-}
-
-func (m Model) inspectPageBounds() (int, int) {
-	if m.detail == nil {
-		return 0, 0
-	}
-	start := m.inspectPage * m.pageSize()
-	if start >= len(m.detail.Tracks) {
-		start = 0
-	}
-	end := start + m.pageSize()
-	if end > len(m.detail.Tracks) {
-		end = len(m.detail.Tracks)
-	}
-	return start, end
-}
-
-func (m Model) inspectVisibleTracks() []engine.Track {
-	if m.detail == nil {
-		return nil
-	}
-	start, end := m.inspectPageBounds()
-	return m.detail.Tracks[start:end]
-}
-
 func (m Model) inspectVisibleCount() int {
 	return len(m.inspectVisibleTracks())
 }
 
 func (m *Model) clampInspectCursor() {
+	pages := m.inspectPageCount()
+	if pages <= 0 {
+		m.inspectPage = 0
+		m.inspectCursor = 0
+		return
+	}
+	m.inspectPage = clamp(m.inspectPage, 0, pages-1)
 	vis := m.inspectVisibleCount()
 	if vis == 0 {
 		m.inspectCursor = 0
@@ -867,12 +971,17 @@ func (m Model) reload() (tea.Model, tea.Cmd) {
 }
 
 func (m Model) editOutput() (tea.Model, tea.Cmd) {
-	m.screen = screenOutput
-	m.inputPurpose = "output"
-	m.input.Placeholder = defaultOutputDir()
-	m.input.SetValue(m.config.OutputDir)
-	m.input.Focus()
-	return m, textinput.Blink
+	m.editing = true
+	m.editBuf = m.config.OutputDir
+	return m, nil
+}
+
+func (m Model) closeSettings() (tea.Model, tea.Cmd) {
+	m.screen = screenHome
+	m.cursor = 0
+	m.editing = false
+	m.editBuf = ""
+	return m.ensureCursor(), nil
 }
 
 func (m Model) adjustPerPage(delta int) (tea.Model, tea.Cmd) {
@@ -894,7 +1003,10 @@ func (m Model) updateOutput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if value == "" {
 			value = defaultOutputDir()
 		}
-		m.config.OutputDir = value
+		m.config.OutputDir = expandPath(value)
+		if m.config.OutputDir == "" {
+			m.config.OutputDir = defaultOutputDir()
+		}
 		saveConfig(m.config)
 		m.screen = screenSettings
 		m.input.Blur()
@@ -907,13 +1019,14 @@ func (m Model) updateOutput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.editing {
+		return m.handleSettingsEdit(msg)
+	}
 	switch msg.String() {
 	case "q":
 		return m, tea.Quit
 	case "esc":
-		m.screen = screenHome
-		m.cursor = 0
-		return m.ensureCursor(), nil
+		return m.closeSettings()
 	case "up", "k":
 		return m.move(-1), nil
 	case "down", "j":
@@ -928,6 +1041,37 @@ func (m Model) updateSettings(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) handleSettingsEdit(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "esc":
+		m.editing = false
+		m.editBuf = ""
+	case "enter":
+		path := expandPath(m.editBuf)
+		if path == "" {
+			path = defaultOutputDir()
+		}
+		m.config.OutputDir = path
+		saveConfig(m.config)
+		m.editing = false
+		m.editBuf = ""
+	case "backspace", "ctrl+h":
+		if m.editBuf != "" {
+			r := []rune(m.editBuf)
+			m.editBuf = string(r[:len(r)-1])
+		}
+	default:
+		if msg.Paste {
+			m.editBuf += string(msg.Runes)
+			break
+		}
+		if msg.Type == tea.KeyRunes {
+			m.editBuf += string(msg.Runes)
+		}
+	}
+	return m, nil
+}
+
 func (m Model) nudgeSetting(delta int) (tea.Model, tea.Cmd) {
 	rows := m.settingsRows()
 	if m.cursor < 0 || m.cursor >= len(rows) {
@@ -936,8 +1080,6 @@ func (m Model) nudgeSetting(delta int) (tea.Model, tea.Cmd) {
 	switch rows[m.cursor].kind {
 	case rowSettingPerPage:
 		return m.adjustPerPage(delta)
-	case rowSettingOutput:
-		return m.editOutput()
 	}
 	return m, nil
 }
