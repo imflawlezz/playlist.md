@@ -1,5 +1,5 @@
 PREFIX  ?= /usr/local
-VERSION ?= 1.0.0
+VERSION ?= 1.1.0
 # Dots look like a file extension to some tools; use dashes in the artifact name.
 VERSION_TAG := $(subst .,-,$(VERSION))
 ROOT    := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
@@ -30,6 +30,8 @@ launcher: core
 
 test:
 	swift test
+	@mkdir -p $(dir $(ASSET))
+	@test -f $(ASSET) || touch $(ASSET)
 	cd $(ROOT)/go && go test ./...
 
 install: launcher
