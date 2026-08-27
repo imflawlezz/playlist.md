@@ -2,54 +2,44 @@
 
 Export Apple Music library playlists to Markdown (don't ask why).
 
-The user-facing binary is **`playlist-md`**. It embeds a Swift MusicKit engine (`playlist-md-core`) and extracts it to a local cache at runtime.
-
-## Architecture
-
-```text
-playlist-md              Go + Bubble Tea TUI (what you run)
-  └── playlist-md-core   Swift/MusicKit engine (embedded)
-```
-
-Details: [docs/architecture.md](docs/architecture.md). Core JSON CLI: [docs/core-protocol.md](docs/core-protocol.md).
+`playlist-md` is a macOS TUI. It embeds a Swift MusicKit engine (`playlist-md-core`) and extracts it to a local cache at runtime.
 
 ## Requirements
 
 - macOS 14+
-- Swift 5.9+ and Go 1.22+ (to build)
+- Swift 5.9+ and Go 1.22+ to build
 - Apple Music subscription with library playlists
-- Media & Apple Music access for the terminal running `playlist-md`
+- Media & Apple Music access for the terminal that runs `playlist-md`
 
 ## Build
 
 ```bash
 make
-```
-
-Produces a universal (arm64 + x86_64) binary at `dist/playlist-md-v1-0-0`.
-
-```bash
-make install   # PREFIX=/usr/local by default → $PREFIX/bin/playlist-md
+make install   # PREFIX=/usr/local → $PREFIX/bin/playlist-md
 make test
 make clean
 ```
 
-## Run
+`make` builds a universal (arm64 + x86_64) binary at `dist/playlist-md-v1-1-0`. `VERSION` in the Makefile controls that suffix (dots become dashes).
 
-Interactive TUI:
+Pushing a `v*` tag runs tests, builds that binary, and publishes a [GitHub Release](https://github.com/imflawlezz/playlist-md/releases) plus a SHA-256. Unsigned; Gatekeeper-clean distribution still needs signing and notarization. Release details: [docs/architecture.md#releases](docs/architecture.md#releases).
+
+## Usage
 
 ```bash
 playlist-md
 ```
 
-Non-interactive export:
+Space toggles playlists; Enter inspects; `/` searches by playlist name or track title, artist, or album. Export writes Markdown to the output folder from Settings.
+
+Non-interactive:
 
 ```bash
 playlist-md export --all --output ./music
 playlist-md export --ids id1,id2 --output ./music
 ```
 
-Forward to the Swift engine:
+Forward to the engine:
 
 ```bash
 playlist-md core status
@@ -57,48 +47,36 @@ playlist-md core list-playlists
 playlist-md core export --all --output ~/Music/AppleMusic
 ```
 
-Local core during development:
-
-```bash
-export PLAYLIST_MD_CORE="$PWD/.build/release/playlist-md-core"
-playlist-md
-```
-
-## TUI
-
-Home shows playlists plus actions (export, clear selection, open folder, settings). Auth status uses ✓ / ✗ with capitalized labels (Authorized, Denied, Restricted, Not authorized).
-
-Search (`/`) filters by playlist name or track title / artist / album. Results use a fixed-height window (same size as playlists per page); **↑↓** / **j k** scroll the list. Match hints truncate title and artist to fit.
-
-Export shows a block progress bar with percentage and the current playlist name; the completed bar remains on the export-complete screen.
+Core commands, JSON, and progress events: [docs/core-protocol.md](docs/core-protocol.md).
 
 | Key | Action |
 |-----|--------|
-| ↑↓ / j k | navigate |
+| ↑↓ / j k | move |
+| ←→ / h l | page / change value |
+| tab | next section |
 | space | toggle playlist |
-| enter | inspect playlist |
+| enter | inspect / confirm |
 | / | search |
 | a / n c | select all / clear |
-| ←→ / h l | page home list (keeps cursor row) |
-| tab | list ↔ actions |
 | o | open output folder |
 | r | reload |
 | s | settings |
+| Ctrl+L | repair display |
 | ? | keybindings |
 | q | quit |
 
-Settings persist to `~/.config/playlist-md/config.json` (or `$XDG_CONFIG_HOME/playlist-md/config.json`):
+## Configuration
 
-- `output_dir` — default `~/AppleMusicExports`
-- `playlists_per_page` — `8` / `12` / `16` / `24`
+`~/.config/playlist-md/config.json`, or `$XDG_CONFIG_HOME/playlist-md/config.json`.
+
+| Key | Default | Notes |
+|-----|---------|--------|
+| `output_dir` | `~/AppleMusicExports` | Enter in Settings to edit |
+| `playlists_per_page` | `12` | `8` / `12` / `16` / `24` (←→) |
 
 ## Authorization
 
-First use prompts for Apple Music access via the embedded Swift process.
-
-If denied: **System Settings → Privacy & Security → Media & Apple Music**.
-
-For distribution, code-sign and notarize `playlist-md` (and the embedded core).
+First run prompts via the embedded Swift process. If denied: **System Settings → Privacy & Security → Media & Apple Music**.
 
 ## Output
 
@@ -107,13 +85,19 @@ For distribution, code-sign and notarize `playlist-md` (and the embedded core).
 ├── index.md
 ├── .playlist-md-manifest.json
 └── playlists/
-    ├── chill.md
-    └── gaming.md
+    └── <slug>.md
 ```
 
-Re-exports remove only stale paths recorded in the previous manifest.
+Re-exports delete only stale paths listed in the previous manifest.
 
-## Swift-only development
+## Development
+
+```bash
+export PLAYLIST_MD_CORE="$PWD/.build/release/playlist-md-core"
+playlist-md
+```
+
+Swift engine only:
 
 ```bash
 swift build -c release --product playlist-md-core
@@ -121,28 +105,25 @@ swift test
 .build/release/playlist-md-core status
 ```
 
-## Layout
+## Architecture
 
 ```text
-go/                         Bubble Tea launcher
-  cmd/playlistmd/
-  internal/engine/          embed + exec Swift core
-  internal/ui/
-Sources/
-  PlaylistMDCore/           Swift library
-  playlist_md_core/         Swift engine entry
-Tests/
-Makefile                    builds dist/playlist-md-v*
-docs/                       architecture, protocol, ADRs
-LICENSE                     MIT
+playlist-md              Go + Bubble Tea (what you run)
+  └── playlist-md-core   Swift / MusicKit (embedded)
 ```
+
+Details: [docs/architecture.md](docs/architecture.md).
 
 ## Limitations
 
 - macOS only (MusicKit)
 - Library playlists only
 - Unavailable tracks may be skipped or have partial metadata
-- Large playlists are fetched in paginated batches
+- Large playlists are fetched in pages
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
