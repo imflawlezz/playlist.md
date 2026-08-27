@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-08-27
+
 ### Added
 
 - Bordered TUI frame with the help bar pinned to the bottom of the window
@@ -40,5 +42,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TUI config at `~/.config/playlist-md/config.json` (`output_dir`, `playlists_per_page`).
 - `PLAYLIST_MD_CORE` override for a local engine binary during development.
 
-[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.0
 [1.0.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.0.0
