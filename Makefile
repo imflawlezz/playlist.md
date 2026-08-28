@@ -1,15 +1,18 @@
 PREFIX  ?= /usr/local
-VERSION ?= 1.1.1
+VERSION ?= 1.1.2
 # Dots look like a file extension to some tools; use dashes in the artifact name.
 VERSION_TAG := $(subst .,-,$(VERSION))
 ROOT    := $(abspath $(dir $(lastword $(MAKEFILE_LIST))))
 DIST    := $(ROOT)/dist
 BIN     := $(DIST)/playlist-md-v$(VERSION_TAG)
+RELEASE_NAME := playlist-md-v$(VERSION)
+RELEASE_DIR  := $(DIST)/$(RELEASE_NAME)
+RELEASE_TAR  := $(DIST)/$(RELEASE_NAME).tar.gz
 ASSET   := $(ROOT)/go/assets/playlist-md-core
 CORE_ARM := $(ROOT)/.build/arm64-apple-macosx/release/playlist-md-core
 CORE_X86 := $(ROOT)/.build/x86_64-apple-macosx/release/playlist-md-core
 
-.PHONY: all core launcher test clean install
+.PHONY: all core launcher release-tar test clean install
 
 all: launcher
 

@@ -5,5 +5,5 @@ const (
 	Author      = "imflawlezz"
 	AuthorURL   = "https://github.com/imflawlezz"
 	CoreName    = "playlist-md-core"
-	CoreVersion = "1.1.1"
+	CoreVersion = "1.1.2"
 )
