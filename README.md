@@ -20,7 +20,7 @@ make test
 make clean
 ```
 
-`make` builds a universal (arm64 + x86_64) binary at `dist/playlist-md-v1-1-0`. `VERSION` in the Makefile controls that suffix (dots become dashes).
+`make` builds a universal (arm64 + x86_64) binary at `dist/playlist-md-v1-1-1`. `VERSION` in the Makefile controls that suffix (dots become dashes).
 
 Pushing a `v*` tag runs tests, builds that binary, and publishes a [GitHub Release](https://github.com/imflawlezz/playlist-md/releases) plus a SHA-256. Unsigned; Gatekeeper-clean distribution still needs signing and notarization. Release details: [docs/architecture.md#releases](docs/architecture.md#releases).
 
@@ -59,7 +59,7 @@ Core commands, JSON, and progress events: [docs/core-protocol.md](docs/core-prot
 | / | search |
 | a / n c | select all / clear |
 | o | open output folder |
-| r | reload |
+| r | refresh library |
 | s | settings |
 | Ctrl+L | repair display |
 | ? | keybindings |
@@ -72,7 +72,7 @@ Core commands, JSON, and progress events: [docs/core-protocol.md](docs/core-prot
 | Key | Default | Notes |
 |-----|---------|--------|
 | `output_dir` | `~/AppleMusicExports` | Enter in Settings to edit |
-| `playlists_per_page` | `12` | `8` / `12` / `16` / `24` (←→) |
+| `playlists_per_page` | `12` | `8` / `12` / `16` / `24` / `32` / `40` (←→) |
 
 ## Authorization
 

@@ -27,7 +27,7 @@ Go never talks to MusicKit. Swift never draws the TUI. The boundary is process s
 
 The core embeds `Sources/PlaylistMDCore/Info.plist` via linker `__info_plist` so MusicKit can associate the process with a bundle ID and usage description.
 
-`VERSION` in the Makefile controls the release artifact name (`1.1.0` → `dist/playlist-md-v1-1-0`). The same value is passed as `make VERSION=…` when CI builds from a tag.
+`VERSION` in the Makefile controls the release artifact name (`1.1.1` → `dist/playlist-md-v1-1-1`). The same value is passed as `make VERSION=…` when CI builds from a tag.
 
 ## TUI
 
@@ -68,4 +68,4 @@ Stale cleanup only removes paths listed in the previous manifest and absent from
 TUI settings live at `$XDG_CONFIG_HOME/playlist-md/config.json`, or `~/.config/playlist-md/config.json` when unset:
 
 - `output_dir` (default `~/AppleMusicExports`)
-- `playlists_per_page` (`8` / `12` / `16` / `24`)
+- `playlists_per_page` (`8` / `12` / `16` / `24` / `32` / `40`)
