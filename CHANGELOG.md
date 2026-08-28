@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] — 2026-08-28
+
+### Added
+
+- **Refresh library** action on home (and **r**); re-fetches playlists and re-indexes tracks for search
+
+### Changed
+
+- Settings row renamed to **Items per page**; page-size options are now `8` / `12` / `16` / `24` / `32` / `40`
+- Search screen drops the page indicator; the match list still scrolls with **↑↓**
+- Playlist and search rows keep full title and hint text when they fit; otherwise the longer side truncates more, with match hints right-aligned
+
+### Fixed
+
+- **j** and **k** type into the search field instead of moving the match list
+- Search input no longer shows a stray trailing **…** from frame clipping
+
 ## [1.1.0] — 2026-08-27
 
 ### Added
@@ -42,6 +59,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TUI config at `~/.config/playlist-md/config.json` (`output_dir`, `playlists_per_page`).
 - `PLAYLIST_MD_CORE` override for a local engine binary during development.
 
-[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.1.1...HEAD
+[1.1.1]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.1
 [1.1.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.0
 [1.0.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.0.0
