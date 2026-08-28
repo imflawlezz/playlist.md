@@ -28,6 +28,14 @@ launcher: core
 	rm -f $(DIST)/playlist-md-arm64 $(DIST)/playlist-md-amd64
 	chmod +x $(BIN)
 
+release-tar: launcher
+	rm -rf $(RELEASE_DIR)
+	mkdir -p $(RELEASE_DIR)
+	install -m 755 $(BIN) $(RELEASE_DIR)/playlist-md
+	install -m 644 README.md LICENSE $(RELEASE_DIR)/
+	tar -czf $(RELEASE_TAR) -C $(DIST) $(RELEASE_NAME)
+	rm -rf $(RELEASE_DIR)
+
 test:
 	swift test
 	@mkdir -p $(dir $(ASSET))

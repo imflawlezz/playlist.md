@@ -33,24 +33,23 @@ jobs:
       - name: Release notes from CHANGELOG.md
         run: sh scripts/release-notes.sh "${GITHUB_REF_NAME}" > "$RUNNER_TEMP/release-notes.md"
 
-      - name: Build universal binary
-        run: make VERSION="${GITHUB_REF_NAME#v}"
+      - name: Build release archive
+        run: make VERSION="${GITHUB_REF_NAME#v}" release-tar
 
       - name: Checksum
         run: |
           ver="${GITHUB_REF_NAME#v}"
-          name="playlist-md-v${ver//./-}"
-          (cd dist && shasum -a 256 "${name}" > checksums.txt)
+          archive="playlist-md-v${ver}.tar.gz"
+          (cd dist && shasum -a 256 "${archive}" > checksums.txt)
 
       - name: Publish GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ver="${GITHUB_REF_NAME#v}"
-          name="playlist-md-v${ver//./-}"
-          bin="dist/${name}"
-          test -x "$bin"
+          archive="dist/playlist-md-v${ver}.tar.gz"
+          test -f "$archive"
           gh release create "${GITHUB_REF_NAME}" \
             --title "${GITHUB_REF_NAME}" \
             --notes-file "$RUNNER_TEMP/release-notes.md" \
-            "$bin" "dist/checksums.txt"
+            "$archive" "dist/checksums.txt"
