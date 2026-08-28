@@ -262,7 +262,7 @@ func TestHomeViewLooksLikeYtdl(t *testing.T) {
 		"2. Gaming",
 		"✓",
 		"Actions",
-		"Export 1",
+		"Export selected",
 		"Clear selection",
 		"Refresh library",
 		"Open folder",

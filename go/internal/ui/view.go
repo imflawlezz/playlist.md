@@ -488,17 +488,74 @@ func listLineBudgets(titleLen, hintLen, contentAvail int) (titleBudget, hintBudg
 			hintBudget = contentAvail - titleBudget
 		}
 	}
+	return titleBudget, hintBudget
+}
 
-	titleText := truncateEnd(title, titleBudget)
-	suffixText := truncateEnd(hint, hintBudget) + mark
-	suffixFieldW := avail - lipgloss.Width(titleText)
-	if suffixFieldW < 1 {
-		suffixFieldW = 1
+func buildInspectHint(t engine.Track, maxWidth int) string {
+	const sep = " · "
+	year := ""
+	if t.Year != nil {
+		year = fmt.Sprintf("%d", *t.Year)
 	}
-	if lipgloss.Width(suffixText) > suffixFieldW {
-		suffixText = truncateEnd(suffixText, suffixFieldW)
+	if maxWidth < 1 {
+		maxWidth = 1
 	}
-	return titleText, padLeft(suffixText, suffixFieldW)
+
+	yearSuffix := ""
+	yearWidth := 0
+	if year != "" {
+		yearSuffix = sep + year
+		yearWidth = lipgloss.Width(yearSuffix)
+	}
+
+	midBudget := maxWidth - yearWidth
+	if midBudget < 1 {
+		midBudget = 1
+	}
+
+	artist := t.Artist
+	album := t.Album
+
+	var mid string
+	switch {
+	case artist != "" && album != "":
+		sepW := lipgloss.Width(sep)
+		artistW := lipgloss.Width(artist)
+		albumBudget := midBudget - artistW - sepW
+		if albumBudget < 1 {
+			albumBudget = 1
+		}
+		mid = artist + sep + truncateEnd(album, albumBudget)
+	case album != "":
+		mid = truncateEnd(album, midBudget)
+	case artist != "":
+		mid = truncateEnd(artist, midBudget)
+	}
+
+	if mid == "" {
+		return year
+	}
+	if year != "" {
+		return mid + yearSuffix
+	}
+	return mid
+}
+
+func exportPercent(index, total int, done bool) int {
+	if done {
+		return 100
+	}
+	if total <= 0 {
+		return 0
+	}
+	pct := (index * 100) / total
+	if index > 0 && pct == 0 {
+		pct = 1
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	return pct
 }
 
 func optionLine(label string, selected, destructive bool, width int) string {
@@ -544,43 +601,6 @@ func searchHintPlain(title, artist string) string {
 	default:
 		return artist
 	}
-}
-
-func renderProgressBar(index, total, width int, done bool) string {
-	inner := width - 5 // room for " 100%"
-	if inner < 12 {
-		inner = 12
-	}
-	filled := 0
-	pct := 0
-	if total > 0 {
-		pct = (index * 100) / total
-		if index > 0 && pct == 0 {
-			pct = 1
-		}
-		if pct > 100 {
-			pct = 100
-		}
-		filled = (index * inner) / total
-		if index > 0 && filled == 0 {
-			filled = 1
-		}
-		if filled > inner {
-			filled = inner
-		}
-	}
-	if done {
-		filled = inner
-		pct = 100
-	}
-
-	fillStyle := authorStyle
-	if done {
-		fillStyle = successStyle
-	}
-	bar := fillStyle.Render(strings.Repeat("█", filled)) +
-		dimStyle.Render(strings.Repeat("░", inner-filled))
-	return bar + " " + dimStyle.Render(fmt.Sprintf("%3d%%", pct))
 }
 
 func compactPath(path string) string {

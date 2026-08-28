@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -507,7 +506,7 @@ func (m Model) homeRows() []navRow {
 		n := len(selectedIDs(m.selected))
 		label := "Export all"
 		if n > 0 {
-			label = fmt.Sprintf("Export %d", n)
+			label = "Export selected"
 		}
 		rows = append(rows, navRow{kind: rowExport, label: label, section: secActions})
 		if n > 0 {
@@ -1257,12 +1256,18 @@ func keepSelection(previous map[string]bool, playlists []engine.Playlist) map[st
 
 func mapExportProgress(prev exportState, event engine.ProgressEvent) exportState {
 	state := prev
+	done := append([]string(nil), prev.done...)
+	if event.Phase == "fetching" && prev.phase == "fetching" &&
+		prev.playlistName != "" && prev.playlistName != event.Name {
+		done = append(done, prev.playlistName)
+	}
+	if event.Phase != "fetching" && prev.phase == "fetching" && prev.playlistName != "" {
+		done = append(done, prev.playlistName)
+	}
+	state.done = done
 	state.phase = event.Phase
 	switch event.Phase {
 	case "fetching":
-		if prev.playlistName != "" && prev.playlistName != event.Name {
-			state.done = append(prev.done, prev.playlistName)
-		}
 		state.playlistName = event.Name
 		state.index = event.Index
 		state.total = event.Total
