@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.2] — 2026-08-28
+
+### Changed
+
+- GitHub Releases attach `playlist-md-v<semver>.tar.gz` (README, LICENSE, and a `playlist-md` binary inside) instead of a bare versioned binary
+
 ## [1.1.1] — 2026-08-28
 
 ### Added
@@ -59,7 +65,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TUI config at `~/.config/playlist-md/config.json` (`output_dir`, `playlists_per_page`).
 - `PLAYLIST_MD_CORE` override for a local engine binary during development.
 
-[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.1.1...HEAD
+[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.1.2...HEAD
+[1.1.2]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.2
 [1.1.1]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.1
 [1.1.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.0
 [1.0.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.0.0
