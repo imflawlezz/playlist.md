@@ -195,44 +195,42 @@ func (m Model) viewInspect() string {
 	start, _ := m.inspectPageBounds()
 	for i, t := range tracks {
 		cursor := i == m.inspectCursor
-		b.WriteString(m.listLine(t.Title, inspectSuffix(t), dimStyle, cursor, false, cw, start+i, len(list)) + "\n")
+		b.WriteString(m.listInspectLine(t, cursor, cw, start+i, len(list)) + "\n")
 	}
 	return b.String()
 }
 
 func (m Model) viewExport() string {
 	var b strings.Builder
+	cw := m.contentWidth()
 
 	index, total := m.export.index, m.export.total
-	done := false
-	switch m.export.phase {
-	case "writing", "cleaning":
-		done = true
-		if total > 0 {
-			index = total
+	donePhase := m.export.phase == "writing" || m.export.phase == "cleaning" || m.export.phase == "done"
+	if donePhase && total > 0 {
+		index = total
+	}
+
+	left := labelStyle.Render("Exporting")
+	right := fmt.Sprintf("%d%%", exportPercent(index, total, donePhase))
+	pad := cw - lipgloss.Width(left) - lipgloss.Width(right)
+	if pad < 1 {
+		pad = 1
+	}
+	b.WriteString(left + strings.Repeat(" ", pad) + right + "\n")
+
+	if len(m.export.done) > 0 {
+		b.WriteString("\n")
+		for _, name := range m.export.done {
+			b.WriteString(successStyle.Render("✓ "+name) + "\n")
 		}
 	}
-
-	title := labelStyle.Render("Exporting")
-	if m.export.phase == "fetching" && m.export.playlistName != "" {
-		nameW := max(8, m.contentWidth()-lipgloss.Width("Exporting  "))
-		title += "  " + truncateEnd(m.export.playlistName, nameW)
-	}
-	b.WriteString(title + "\n\n")
-
-	barW := max(28, m.contentWidth()-6)
-	b.WriteString(renderProgressBar(index, total, barW, done) + "\n")
 
 	switch m.export.phase {
 	case "writing":
 		b.WriteString("\n" + dimStyle.Render("Writing Markdown files") + "\n")
 	case "cleaning":
 		b.WriteString("\n" + dimStyle.Render("Cleaning stale exports") + "\n")
-	case "fetching":
-		if total > 0 {
-			b.WriteString("\n" + dimStyle.Render(fmt.Sprintf("%d/%d", index, total)) + "\n")
-		}
-	default:
+	case "starting":
 		b.WriteString("\n" + dimStyle.Render("Working…") + "\n")
 	}
 	return b.String()
@@ -347,6 +345,26 @@ func (m Model) renderPlaylistRow(row navRow, cursor bool, width int) string {
 	return m.listLine(row.label, suffix, style, cursor, false, width, row.index, total)
 }
 
+func (m Model) listInspectLine(t engine.Track, cursor bool, width, idx, total int) string {
+	if width < 8 {
+		width = 8
+	}
+	numW := len(fmt.Sprintf("%d", max(1, total)))
+	num := fmt.Sprintf("%*d. ", numW, idx+1)
+	gap := "  "
+	avail := width - lipgloss.Width(num) - lipgloss.Width(gap)
+	if avail < 8 {
+		avail = 8
+	}
+
+	titlePart, suffixPart := splitInspectLine(t.Title, t, avail)
+	line := num + titlePart + gap
+	if cursor {
+		return fillSelected(line+suffixPart, width, false)
+	}
+	return line + dimStyle.Render(suffixPart)
+}
+
 func (m Model) listLine(title, suffix string, suffixStyle lipgloss.Style, cursor, dim bool, width, idx, total int) string {
 	if width < 8 {
 		width = 8
@@ -403,10 +421,39 @@ func splitListLine(title, hint, mark string, avail int) (string, string) {
 		mark = ""
 	}
 
-	titleBudget, hintBudget := titleLen, hintLen
+	titleBudget, hintBudget := listLineBudgets(titleLen, hintLen, contentAvail)
+
+	titleText := truncateEnd(title, titleBudget)
+	suffixText := truncateEnd(hint, hintBudget) + mark
+	suffixFieldW := avail - lipgloss.Width(titleText)
+	if suffixFieldW < 1 {
+		suffixFieldW = 1
+	}
+	if lipgloss.Width(suffixText) > suffixFieldW {
+		suffixText = truncateEnd(suffixText, suffixFieldW)
+	}
+	return titleText, padLeft(suffixText, suffixFieldW)
+}
+
+func splitInspectLine(title string, t engine.Track, avail int) (string, string) {
+	fullHint := buildInspectHint(t, 9999)
+	titleBudget, hintBudget := listLineBudgets(lipgloss.Width(title), lipgloss.Width(fullHint), avail)
+	titleText := truncateEnd(title, titleBudget)
+	hint := buildInspectHint(t, hintBudget)
+	suffixFieldW := avail - lipgloss.Width(titleText)
+	if suffixFieldW < 1 {
+		suffixFieldW = 1
+	}
+	return titleText, padLeft(hint, suffixFieldW)
+}
+
+func listLineBudgets(titleLen, hintLen, contentAvail int) (titleBudget, hintBudget int) {
+	const minPart = 4
+
+	titleBudget, hintBudget = titleLen, hintLen
 
 	switch {
-	case titleLen+hintLen+markLen <= contentAvail:
+	case titleLen+hintLen <= contentAvail:
 	case titleLen <= hintLen && titleLen+minPart <= contentAvail:
 		titleBudget = titleLen
 		hintBudget = contentAvail - titleLen
@@ -484,20 +531,6 @@ func authStatus(status string) string {
 	default:
 		return warnStyle.Render("✗ Not authorized")
 	}
-}
-
-func inspectSuffix(t engine.Track) string {
-	var parts []string
-	if t.Artist != "" {
-		parts = append(parts, t.Artist)
-	}
-	if t.Album != "" {
-		parts = append(parts, t.Album)
-	}
-	if t.Year != nil {
-		parts = append(parts, fmt.Sprintf("%d", *t.Year))
-	}
-	return strings.Join(parts, " · ")
 }
 
 func searchHintPlain(title, artist string) string {
