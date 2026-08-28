@@ -11,18 +11,30 @@ Export Apple Music library playlists to Markdown (don't ask why).
 - Apple Music subscription with library playlists
 - Media & Apple Music access for the terminal that runs `playlist-md`
 
+## Install
+
+Download `playlist-md-v<semver>.tar.gz` from [GitHub Releases](https://github.com/imflawlezz/playlist-md/releases), then:
+
+```bash
+tar xzf playlist-md-v1.1.2.tar.gz
+./playlist-md-v1.1.2/playlist-md
+```
+
+The archive contains `README.md`, `LICENSE`, and a universal macOS binary named `playlist-md`. Move it onto your `PATH` if you like. Unsigned; Gatekeeper-clean distribution still needs signing and notarization.
+
 ## Build
 
 ```bash
 make
 make install   # PREFIX=/usr/local → $PREFIX/bin/playlist-md
+make release-tar   # dist/playlist-md-v<semver>.tar.gz (same layout as releases)
 make test
 make clean
 ```
 
-`make` builds a universal (arm64 + x86_64) binary at `dist/playlist-md-v1-1-1`. `VERSION` in the Makefile controls that suffix (dots become dashes).
+`make` builds a universal (arm64 + x86_64) binary at `dist/playlist-md-v<version-with-dashes>` (e.g. `1.1.2` → `v1-1-2`). `VERSION` in the Makefile controls that suffix.
 
-Pushing a `v*` tag runs tests, builds that binary, and publishes a [GitHub Release](https://github.com/imflawlezz/playlist-md/releases) plus a SHA-256. Unsigned; Gatekeeper-clean distribution still needs signing and notarization. Release details: [docs/architecture.md#releases](docs/architecture.md#releases).
+Pushing a `v*` tag runs tests, builds the same `.tar.gz` via `make release-tar`, and publishes a [GitHub Release](https://github.com/imflawlezz/playlist-md/releases) plus a SHA-256. Release details: [docs/architecture.md#releases](docs/architecture.md#releases).
 
 ## Usage
 
@@ -51,7 +63,7 @@ Core commands, JSON, and progress events: [docs/core-protocol.md](docs/core-prot
 
 | Key | Action |
 |-----|--------|
-| ↑↓ / j k | move |
+| ↑↓ / j k | move (search: **↑↓** only — **j** / **k** type in the query) |
 | ←→ / h l | page / change value |
 | tab | next section |
 | space | toggle playlist |
@@ -72,7 +84,7 @@ Core commands, JSON, and progress events: [docs/core-protocol.md](docs/core-prot
 | Key | Default | Notes |
 |-----|---------|--------|
 | `output_dir` | `~/AppleMusicExports` | Enter in Settings to edit |
-| `playlists_per_page` | `12` | `8` / `12` / `16` / `24` / `32` / `40` (←→) |
+| `playlists_per_page` | `12` | Settings: **Items per page** — `8` / `12` / `16` / `24` / `32` / `40` (←→) |
 
 ## Authorization
 

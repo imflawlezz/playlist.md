@@ -34,10 +34,10 @@ export PLAYLIST_MD_CORE="$PWD/.build/release/playlist-md-core"
 
 ## Representative responses
 
-The `version` field matches `AppVersion.version` in the Swift core (currently `1.1.1`).
+The `version` field matches `AppVersion.version` in the Swift core.
 
 ```json
-{"name":"playlist-md-core","version":"1.1.1"}
+{"name":"playlist-md-core","version":"<semver>"}
 ```
 
 ```json
