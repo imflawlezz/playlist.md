@@ -24,11 +24,13 @@ func TestSettingsViewAndPerPageCycle(t *testing.T) {
 		"Settings",
 		"Output folder",
 		"/tmp/out",
-		"Playlists per page",
+		"Items per page",
 		"8",
 		"12",
 		"16",
 		"24",
+		"32",
+		"40",
 		"Back",
 	} {
 		if !strings.Contains(got, want) {
@@ -40,7 +42,7 @@ func TestSettingsViewAndPerPageCycle(t *testing.T) {
 	}
 	same := false
 	for _, line := range strings.Split(got, "\n") {
-		if strings.Contains(line, "Playlists per page") && strings.Contains(line, "8") && strings.Contains(line, "24") {
+		if strings.Contains(line, "Items per page") && strings.Contains(line, "8") && strings.Contains(line, "40") {
 			same = true
 			break
 		}

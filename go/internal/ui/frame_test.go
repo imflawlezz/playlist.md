@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/imflawlezz/playlist-md/internal/engine"
 )
@@ -95,7 +96,7 @@ func TestHomeViewHasFrameAndBottomHelp(t *testing.T) {
 	m.ensureCursor()
 	got := stripANSI(m.View())
 	for _, want := range []string{
-		"┌─ playlist-md v1.1.0 by imflawlezz",
+		"┌─ playlist-md v1.1.1 by imflawlezz",
 		"Output:",
 		"Apple Music:",
 		"Playlists:",
@@ -263,6 +264,7 @@ func TestHomeViewLooksLikeYtdl(t *testing.T) {
 		"Actions",
 		"Export 1",
 		"Clear selection",
+		"Refresh library",
 		"Open folder",
 		"Settings",
 		"Repair TUI",
@@ -413,6 +415,62 @@ func TestFillSelectedStaysOneLine(t *testing.T) {
 	}
 	if w := len([]rune(plain)); w > 40 {
 		t.Fatalf("selected width %d want <= 40: %q", w, plain)
+	}
+}
+
+func TestListLineFitsBothWithoutTruncation(t *testing.T) {
+	titlePart, suffixPart := splitListLine("Chill Mix", "Needle · Artist", "", 40)
+	if strings.Contains(titlePart, "…") || strings.Contains(suffixPart, "…") {
+		t.Fatalf("should not truncate: %q | %q", titlePart, suffixPart)
+	}
+	if titlePart != "Chill Mix" {
+		t.Fatalf("title %q", titlePart)
+	}
+	if strings.TrimSpace(suffixPart) != "Needle · Artist" {
+		t.Fatalf("hint %q", suffixPart)
+	}
+	if !strings.HasPrefix(suffixPart, " ") {
+		t.Fatalf("hint should be right-aligned: %q", suffixPart)
+	}
+}
+
+func TestListLineSuffixRightAligned(t *testing.T) {
+	_, suffixPart := splitListLine("A", "Hint", "", 20)
+	if lipgloss.Width(suffixPart) != 19 {
+		t.Fatalf("suffix field width %d want 19: %q", lipgloss.Width(suffixPart), suffixPart)
+	}
+	if !strings.HasSuffix(suffixPart, "Hint") {
+		t.Fatalf("suffix should end with hint: %q", suffixPart)
+	}
+}
+
+func TestListLineTruncatesLongerPartMore(t *testing.T) {
+	shortTitle, longHint := "Chill", strings.Repeat("Needle Song ", 8)+"· Artist"
+	titlePart, suffixPart := splitListLine(shortTitle, longHint, "", 40)
+	if strings.Contains(titlePart, "…") {
+		t.Fatalf("short title should stay intact: %q", titlePart)
+	}
+	if !strings.Contains(suffixPart, "…") {
+		t.Fatalf("long hint should truncate: %q", suffixPart)
+	}
+
+	longTitle, shortHint := strings.Repeat("Playlist ", 8), "Track · A"
+	titlePart, suffixPart = splitListLine(longTitle, shortHint, "", 40)
+	if strings.Contains(suffixPart, "…") {
+		t.Fatalf("short hint should stay intact: %q", suffixPart)
+	}
+	if !strings.Contains(titlePart, "…") {
+		t.Fatalf("long title should truncate: %q", titlePart)
+	}
+
+	title := "Clarity (BUNT. Remix) [feat. Foxes] - Single"
+	hint := title + " · Zedd & VALORANT Music Team"
+	titlePart, suffixPart = splitListLine(title, hint, "", 50)
+	if strings.Contains(titlePart, "…") {
+		t.Fatalf("shorter title should stay intact: %q", titlePart)
+	}
+	if !strings.Contains(strings.TrimSpace(suffixPart), "…") {
+		t.Fatalf("longer hint should truncate: %q", strings.TrimSpace(suffixPart))
 	}
 }
 

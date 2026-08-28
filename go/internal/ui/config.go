@@ -4,12 +4,19 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
-var playlistsPerPageOptions = []int{8, 12, 16, 24}
+var playlistsPerPageOptions = []int{8, 12, 16, 24, 32, 40}
 
-var perPageLabels = []string{"8", "12", "16", "24"}
+func perPageLabelStrings() []string {
+	out := make([]string, len(playlistsPerPageOptions))
+	for i, n := range playlistsPerPageOptions {
+		out[i] = strconv.Itoa(n)
+	}
+	return out
+}
 
 type Config struct {
 	OutputDir        string `json:"output_dir"`

@@ -72,6 +72,7 @@ const (
 	rowLabel
 	rowAuthorize
 	rowLoadPlaylists
+	rowRefresh
 	rowExport
 	rowClearSelection
 	rowOpenFolder

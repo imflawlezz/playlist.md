@@ -61,7 +61,7 @@ func keysFor(s screen) []keyBind {
 			keyBind{Section: "List", Action: "Search", Key: "/"},
 			keyBind{Section: "List", Action: "Select all", Key: "a"},
 			keyBind{Section: "List", Action: "Clear selection", Key: "n", Also: "c"},
-			keyBind{Section: "List", Action: "Reload", Key: "r"},
+			keyBind{Section: "List", Action: "Refresh library", Key: "r"},
 		)
 		return append(out, app...)
 	case screenSearch:

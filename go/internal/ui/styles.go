@@ -82,6 +82,17 @@ func padRight(s string, width int) string {
 	return s
 }
 
+func padLeft(s string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	s = truncateEnd(s, width)
+	if pad := width - lipgloss.Width(s); pad > 0 {
+		s = strings.Repeat(" ", pad) + s
+	}
+	return s
+}
+
 // OSC 8; supporting terminals open url when the label is clicked.
 func hyperlink(url, label string) string {
 	if url == "" {

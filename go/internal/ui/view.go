@@ -148,7 +148,7 @@ func (m Model) renderSettingsRow(row navRow, cursor bool, width int) string {
 			right = truncateEnd(val, remain)
 		}
 	case rowSettingPerPage:
-		right = segmented(perPageLabels, indexOfInt(playlistsPerPageOptions, m.config.PlaylistsPerPage))
+		right = segmented(perPageLabelStrings(), indexOfInt(playlistsPerPageOptions, m.config.PlaylistsPerPage))
 	default:
 		right = row.label
 	}
@@ -292,28 +292,14 @@ func (m Model) renderPlaylistsHeader(width int) string {
 	if m.query != "" {
 		left += dimStyle.Render("  ·  /" + m.query)
 	}
-	pages := m.pageCount()
 	if m.screen == screenSearch {
-		total := len(m.filteredHits())
-		size := m.pageSize()
-		if total > size {
-			pages = (total + size - 1) / size
-		} else {
-			pages = 1
-		}
+		return left
 	}
+	pages := m.pageCount()
 	if pages <= 1 {
 		return left
 	}
-	page := m.page
-	if m.screen == screenSearch {
-		size := m.pageSize()
-		if size < 1 {
-			size = 1
-		}
-		page = m.searchOff / size
-	}
-	pager := dimStyle.Render(fmt.Sprintf("%d / %d", page+1, pages))
+	pager := dimStyle.Render(fmt.Sprintf("%d / %d", m.page+1, pages))
 	pad := width - lipgloss.Width(left) - lipgloss.Width(pager)
 	if pad < 1 {
 		pad = 1
@@ -378,23 +364,94 @@ func (m Model) listLine(title, suffix string, suffixStyle lipgloss.Style, cursor
 		return line
 	}
 	gap := "  "
-	titleW := width - lipgloss.Width(num) - lipgloss.Width(gap) - lipgloss.Width(suffix)
-	if titleW < 8 {
-		suffix = truncateEnd(suffix, max(6, width/3))
-		titleW = width - lipgloss.Width(num) - lipgloss.Width(gap) - lipgloss.Width(suffix)
-		if titleW < 4 {
-			titleW = 4
-		}
+	avail := width - lipgloss.Width(num) - lipgloss.Width(gap)
+	if avail < 8 {
+		avail = 8
 	}
-	titlePart := padRight(truncateEnd(title, titleW), titleW)
+
+	hint := suffix
+	mark := ""
+	if strings.HasSuffix(hint, "  ✓") {
+		mark = "  ✓"
+		hint = strings.TrimSuffix(hint, "  ✓")
+	} else if hint == "✓" {
+		hint = ""
+		mark = "✓"
+	}
+
+	titlePart, suffixPart := splitListLine(title, hint, mark, avail)
 	if cursor {
-		return fillSelected(num+titlePart+gap+suffix, width, false)
+		return fillSelected(num+titlePart+gap+suffixPart, width, false)
 	}
 	line := num + titlePart + gap
 	if dim {
-		return dimStyle.Render(line + suffix)
+		return dimStyle.Render(line + suffixPart)
 	}
-	return line + suffixStyle.Render(suffix)
+	return line + suffixStyle.Render(suffixPart)
+}
+
+func splitListLine(title, hint, mark string, avail int) (string, string) {
+	const minPart = 4
+
+	titleLen := lipgloss.Width(title)
+	hintLen := lipgloss.Width(hint)
+	markLen := lipgloss.Width(mark)
+
+	contentAvail := avail - markLen
+	if contentAvail < minPart {
+		contentAvail = avail
+		mark = ""
+	}
+
+	titleBudget, hintBudget := titleLen, hintLen
+
+	switch {
+	case titleLen+hintLen+markLen <= contentAvail:
+	case titleLen <= hintLen && titleLen+minPart <= contentAvail:
+		titleBudget = titleLen
+		hintBudget = contentAvail - titleLen
+	case hintLen < titleLen && hintLen+minPart <= contentAvail:
+		hintBudget = hintLen
+		titleBudget = contentAvail - hintLen
+	default:
+		sum := titleLen + hintLen
+		excess := sum - contentAvail
+		titleBudget = titleLen - excess*titleLen/sum
+		hintBudget = hintLen - excess*hintLen/sum
+		if titleBudget+hintBudget > contentAvail {
+			over := titleBudget + hintBudget - contentAvail
+			if hintLen >= titleLen {
+				hintBudget -= over
+			} else {
+				titleBudget -= over
+			}
+		}
+	}
+
+	if titleBudget < 1 {
+		titleBudget = 1
+	}
+	if hintBudget < 1 {
+		hintBudget = 1
+	}
+	if titleBudget+hintBudget > contentAvail {
+		if titleLen >= hintLen {
+			titleBudget = contentAvail - hintBudget
+		} else {
+			hintBudget = contentAvail - titleBudget
+		}
+	}
+
+	titleText := truncateEnd(title, titleBudget)
+	suffixText := truncateEnd(hint, hintBudget) + mark
+	suffixFieldW := avail - lipgloss.Width(titleText)
+	if suffixFieldW < 1 {
+		suffixFieldW = 1
+	}
+	if lipgloss.Width(suffixText) > suffixFieldW {
+		suffixText = truncateEnd(suffixText, suffixFieldW)
+	}
+	return titleText, padLeft(suffixText, suffixFieldW)
 }
 
 func optionLine(label string, selected, destructive bool, width int) string {
@@ -510,6 +567,16 @@ func (m Model) contentWidth() int {
 		return 8
 	}
 	return w
+}
+
+func (m Model) inputWidth() int {
+	promptW := lipgloss.Width(m.input.PromptStyle.Render(m.input.Prompt))
+	inner := m.frameWidth() - 2
+	budget := inner - 2 - promptW - 1 // frame indent, prompt, cursor
+	if budget < 8 {
+		return 8
+	}
+	return budget
 }
 
 func truncateEnd(s string, maxWidth int) string {

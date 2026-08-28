@@ -101,7 +101,7 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.haveSize = true
-		m.input.Width = max(20, m.contentWidth())
+		m.input.Width = m.inputWidth()
 		m.clampInspectCursor()
 		return m.ensureCursor(), nil
 
@@ -349,6 +349,7 @@ func (m Model) openSearch() (tea.Model, tea.Cmd) {
 	m.screen = screenSearch
 	m.inputPurpose = "search"
 	m.input.Placeholder = "playlist or track"
+	m.input.Width = m.inputWidth()
 	m.input.SetValue(m.query)
 	m.input.CursorEnd()
 	m.input.Focus()
@@ -376,9 +377,9 @@ func (m Model) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.clampPage()
 		m.cursor = 0
 		return m.ensureCursor(), nil
-	case "up", "k", "ctrl+p":
+	case "up", "ctrl+p":
 		return m.moveSearch(-1), nil
-	case "down", "j", "ctrl+n":
+	case "down", "ctrl+n":
 		return m.moveSearch(1), nil
 	}
 	var cmd tea.Cmd
@@ -510,6 +511,7 @@ func (m Model) homeRows() []navRow {
 		if n > 0 {
 			rows = append(rows, navRow{kind: rowClearSelection, label: "Clear selection", section: secActions})
 		}
+		rows = append(rows, navRow{kind: rowRefresh, label: "Refresh library", section: secActions})
 	}
 	rows = append(rows,
 		navRow{kind: rowOpenFolder, label: "Open folder", section: secActions},
@@ -525,7 +527,7 @@ func (m Model) homeRows() []navRow {
 func (m Model) settingsRows() []navRow {
 	return []navRow{
 		{kind: rowSettingOutput, label: "Output folder", section: secSettings},
-		{kind: rowSettingPerPage, label: "Playlists per page", section: secSettings},
+		{kind: rowSettingPerPage, label: "Items per page", section: secSettings},
 		{kind: rowSettingBack, label: "Back", section: secSettings},
 	}
 }
@@ -752,7 +754,7 @@ func (m Model) activate() (tea.Model, tea.Cmd) {
 		m.loading = true
 		m.err = ""
 		return m, authorize(m.client)
-	case rowLoadPlaylists:
+	case rowLoadPlaylists, rowRefresh:
 		return m.reload()
 	case rowExport:
 		if len(m.playlists) == 0 {
