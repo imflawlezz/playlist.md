@@ -180,6 +180,8 @@ func (m Model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.indexDone = 0
 		m.indexGen++
 		m.indexing = len(m.playlists) > 0
+		m.page = 0
+		m.cursor = 0
 		m.clampPage()
 		var cmds []tea.Cmd
 		if m.indexing {

@@ -474,6 +474,96 @@ func TestListLineTruncatesLongerPartMore(t *testing.T) {
 	}
 }
 
+func TestPlaylistsLoadResetsCursorToFirst(t *testing.T) {
+	m := Model{
+		width:    80,
+		height:   24,
+		screen:   screenHome,
+		status:   "authorized",
+		cursor:   4,
+		selected: map[string]bool{},
+		config:   defaultConfig(),
+	}
+	playlists := make([]engine.Playlist, 6)
+	for i := range playlists {
+		playlists[i] = engine.Playlist{
+			ID:   fmt.Sprintf("id%d", i),
+			Name: fmt.Sprintf("Playlist %d", i+1),
+		}
+	}
+	next, _ := m.Update(playlistsMsg{playlists: playlists})
+	mm := next.(Model)
+	rows := mm.homeRows()
+	if mm.cursor >= len(rows) || rows[mm.cursor].kind != rowPlaylist {
+		t.Fatalf("cursor %d should be on a playlist row", mm.cursor)
+	}
+	if rows[mm.cursor].label != "Playlist 1" {
+		t.Fatalf("cursor on %q want Playlist 1", rows[mm.cursor].label)
+	}
+	if mm.page != 0 {
+		t.Fatalf("page %d want 0", mm.page)
+	}
+}
+
+func TestInspectHintPreservesYear(t *testing.T) {
+	year := 1999
+	t.Run("truncates album not year", func(t *testing.T) {
+		track := engine.Track{
+			Title:  "Song",
+			Artist: "Artist",
+			Album:  strings.Repeat("Very Long Album Name ", 6),
+			Year:   &year,
+		}
+		hint := buildInspectHint(track, 30)
+		if !strings.HasSuffix(hint, "1999") {
+			t.Fatalf("year should stay intact: %q", hint)
+		}
+		if !strings.Contains(hint, "…") {
+			t.Fatalf("album should truncate: %q", hint)
+		}
+	})
+	t.Run("split line keeps year", func(t *testing.T) {
+		track := engine.Track{
+			Title:  strings.Repeat("Long Track Title ", 4),
+			Artist: "Artist",
+			Album:  strings.Repeat("Long Album ", 5),
+			Year:   &year,
+		}
+		_, suffix := splitInspectLine(track.Title, track, 40)
+		plain := stripANSI(suffix)
+		if !strings.Contains(plain, "1999") {
+			t.Fatalf("suffix should include year: %q", plain)
+		}
+		if !strings.Contains(plain, "…") {
+			t.Fatalf("suffix should truncate album: %q", plain)
+		}
+	})
+}
+
+func TestExportViewShowsProgressHeader(t *testing.T) {
+	m := Model{
+		width:  80,
+		height: 24,
+		screen: screenExport,
+		export: exportState{
+			phase: "fetching",
+			done:  []string{"Chill Mix", "Gaming"},
+			index: 2,
+			total: 3,
+		},
+	}
+	got := stripANSI(m.View())
+	if !strings.Contains(got, "Exporting") || !strings.Contains(got, "66%") {
+		t.Fatalf("expected exporting header with percent:\n%s", got)
+	}
+	if !strings.Contains(got, "✓ Chill Mix") || !strings.Contains(got, "✓ Gaming") {
+		t.Fatalf("expected finished playlists:\n%s", got)
+	}
+	if strings.Contains(got, "█") {
+		t.Fatalf("progress bar should be removed:\n%s", got)
+	}
+}
+
 func titles(tracks []engine.Track) []string {
 	out := make([]string, len(tracks))
 	for i, t := range tracks {
