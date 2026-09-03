@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] — 2026-09-03
+
+### Added
+
+- Separate **Export music library** action / `export --library` writes **`library.md`**; `index.md` links to it when present
+- Optional **`export.log`** (INFO / WARNING / ERROR) under the output folder; Settings **Export log** / `--write-logs` / `--no-write-logs` (default on)
+- Export progress shows **Exporting** with a percentage and a checklist of finished playlists (progress bar removed)
+- Export result includes `exported_library_tracks` and optional `log_path`; progress phase `library` while fetching songs
+
+### Changed
+
+- Playlist export actions labeled **Export all playlists** / **Export selected playlists** (no longer bundled with the library dump)
+
+### Fixed
+
+- Home cursor resets to the first playlist when the library loads (no longer stuck on a mid-list row)
+- Inspect track rows keep the **year** intact and truncate the **album** when space is tight
+- Playlist names with trailing or internal dots (e.g. `…`) no longer fail export as unsafe filenames
+- Export errors from the Swift core surface their real message instead of a generic `playlist-md-core export failed`
+
 ## [1.1.2] — 2026-08-28
 
 ### Changed
@@ -65,7 +85,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TUI config at `~/.config/playlist-md/config.json` (`output_dir`, `playlists_per_page`).
 - `PLAYLIST_MD_CORE` override for a local engine binary during development.
 
-[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.1.2...HEAD
+[Unreleased]: https://github.com/imflawlezz/playlist-md/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.3.0
 [1.1.2]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.2
 [1.1.1]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.1
 [1.1.0]: https://github.com/imflawlezz/playlist-md/releases/tag/v1.1.0
