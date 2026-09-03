@@ -38,11 +38,13 @@ The title bar includes an OSC 8 hyperlink on the author name. Terminals that sup
 
 Unless the user has manually resized the window, the TUI grows terminal height to fit the current view (minimum 72×22 columns×rows). **Ctrl+L** clears the screen, forgets manual resize, and re-queries terminal size.
 
-Home includes **Refresh library** (**r**), which re-fetches playlists and re-indexes tracks for search.
+Home includes **Export all playlists** / **Export selected playlists**, **Export music library**, and **Refresh library** (**r**). Refresh re-fetches playlists and re-indexes tracks for search; library export does not require a prior playlist load.
+
+Export progress shows **Exporting** with a percentage on the right and a checklist of finished playlist names (no progress bar). Library export uses the `library` progress phase instead of the playlist checklist. Inspect track rows keep the **year** and truncate the **album** when space is tight.
 
 ## Releases
 
-CI (`.github/workflows/ci.yml`) runs on push and pull requests to `main`: Swift tests, Go tests, `go vet`, and a syntax/smoke check of `scripts/release-notes.sh`.
+CI (`.github/workflows/ci.yml`) runs on push to `main`/`master` and on pull requests: Swift tests, Go tests, `go vet`, and a syntax/smoke check of `scripts/release-notes.sh`.
 
 Pushing a `v*` tag triggers `.github/workflows/release.yml`:
 
@@ -61,12 +63,16 @@ The changelog section for the tagged version must exist before the tag is pushed
 ```text
 <output>/
 ├── index.md
+├── library.md                 ← after Export music library / export --library (kept on playlist re-export if present)
+├── export.log                 ← when write_export_log / --write-logs is on
 ├── .playlist-md-manifest.json
 └── playlists/
     └── <slug>.md
 ```
 
-Stale cleanup only removes paths listed in the previous manifest and absent from the current export. Other files in the output directory are left alone.
+Playlist export and library export are separate. Playlist export writes playlist Markdown and keeps an existing `library.md` when present; library export (`export --library` / **Export music library**) writes or refreshes `library.md`. `library.md` lists library songs deduped by MusicKit song id, sorted by artist then title (identical metadata can still appear twice when MusicKit returns distinct ids). `exported_tracks` is the sum of tracks across exported playlists (a song in two playlists counts twice); `exported_library_tracks` is the library dump row count (playlist-only runs report `0`).
+
+When enabled (`write_export_log` / `--write-logs`), `export.log` records INFO/WARNING/ERROR lines for the run (and is still written if the export fails after the output directory is known). Stale cleanup only removes paths listed in the previous manifest (`playlists` entries and `files`, e.g. `library.md`) and absent from the current export. Playlist export preserves managed files that still exist on disk; library export preserves playlist entries from the previous manifest. Other files in the output directory—including `export.log`—are left alone.
 
 ## Config
 
@@ -74,3 +80,4 @@ TUI settings live at `$XDG_CONFIG_HOME/playlist-md/config.json`, or `~/.config/p
 
 - `output_dir` (default `~/AppleMusicExports`)
 - `playlists_per_page` (Settings label: **Items per page**; options `8` / `12` / `16` / `24` / `32` / `40`)
+- `write_export_log` (Settings label: **Export log**; default on — writes `export.log`)
