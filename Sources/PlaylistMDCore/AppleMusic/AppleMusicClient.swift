@@ -12,4 +12,5 @@ protocol AppleMusicClient: Sendable {
     func requestAuthorization() async -> AuthorizationStatus
     func fetchPlaylistSummaries() async throws -> [PlaylistSummary]
     func fetchTracks(for playlistID: String) async throws -> [Track]
+    func fetchLibrarySongs() async throws -> [Track]
 }

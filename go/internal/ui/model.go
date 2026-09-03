@@ -502,13 +502,15 @@ func (m Model) homeRows() []navRow {
 		rows = append(rows, navRow{kind: rowAuthorize, label: "Authorize", section: secActions})
 	} else if len(m.playlists) == 0 {
 		rows = append(rows, navRow{kind: rowLoadPlaylists, label: "Load playlists", section: secActions})
+		rows = append(rows, navRow{kind: rowExportLibrary, label: "Export music library", section: secActions})
 	} else {
 		n := len(selectedIDs(m.selected))
-		label := "Export all"
+		label := "Export all playlists"
 		if n > 0 {
-			label = "Export selected"
+			label = "Export selected playlists"
 		}
 		rows = append(rows, navRow{kind: rowExport, label: label, section: secActions})
+		rows = append(rows, navRow{kind: rowExportLibrary, label: "Export music library", section: secActions})
 		if n > 0 {
 			rows = append(rows, navRow{kind: rowClearSelection, label: "Clear selection", section: secActions})
 		}
@@ -529,6 +531,7 @@ func (m Model) settingsRows() []navRow {
 	return []navRow{
 		{kind: rowSettingOutput, label: "Output folder", section: secSettings},
 		{kind: rowSettingPerPage, label: "Items per page", section: secSettings},
+		{kind: rowSettingExportLog, label: "Export log", section: secSettings},
 		{kind: rowSettingBack, label: "Back", section: secSettings},
 	}
 }
@@ -768,6 +771,9 @@ func (m Model) activate() (tea.Model, tea.Cmd) {
 			return m, startExport(m, nil, true)
 		}
 		return m, startExport(m, ids, false)
+	case rowExportLibrary:
+		m.err = ""
+		return m, startExportLibrary(m)
 	case rowClearSelection:
 		m.selected = map[string]bool{}
 		return m, nil
@@ -1083,6 +1089,10 @@ func (m Model) nudgeSetting(delta int) (tea.Model, tea.Cmd) {
 	switch rows[m.cursor].kind {
 	case rowSettingPerPage:
 		return m.adjustPerPage(delta)
+	case rowSettingExportLog:
+		m.config.WriteExportLog = !m.config.WriteExportLog
+		saveConfig(m.config)
+		return m, nil
 	}
 	return m, nil
 }
@@ -1329,11 +1339,38 @@ func startIndex(m Model) tea.Cmd {
 
 func startExport(m Model, ids []string, all bool) tea.Cmd {
 	output := m.config.OutputDir
+	writeLogs := m.config.WriteExportLog
 	client := m.client
 	notify := m.notify
 	return func() tea.Msg {
 		go func() {
-			result, err := client.Export(output, ids, all, func(event engine.ProgressEvent) {
+			result, err := client.Export(output, ids, all, writeLogs, func(event engine.ProgressEvent) {
+				if notify != nil {
+					notify(exportProgressMsg(event))
+				}
+			})
+			if err != nil {
+				if notify != nil {
+					notify(errMsg(err))
+				}
+				return
+			}
+			if notify != nil {
+				notify(exportDoneMsg{result: result})
+			}
+		}()
+		return exportStartedMsg{}
+	}
+}
+
+func startExportLibrary(m Model) tea.Cmd {
+	output := m.config.OutputDir
+	writeLogs := m.config.WriteExportLog
+	client := m.client
+	notify := m.notify
+	return func() tea.Msg {
+		go func() {
+			result, err := client.ExportLibrary(output, writeLogs, func(event engine.ProgressEvent) {
 				if notify != nil {
 					notify(exportProgressMsg(event))
 				}

@@ -15,7 +15,7 @@ func TestSettingsViewAndPerPageCycle(t *testing.T) {
 		screen:   screenSettings,
 		width:    80,
 		height:   24,
-		config:   Config{OutputDir: "/tmp/out", PlaylistsPerPage: 12},
+		config:   Config{OutputDir: "/tmp/out", PlaylistsPerPage: 12, WriteExportLog: true},
 		selected: map[string]bool{},
 	}
 	m.ensureCursor()
@@ -25,6 +25,9 @@ func TestSettingsViewAndPerPageCycle(t *testing.T) {
 		"Output folder",
 		"/tmp/out",
 		"Items per page",
+		"Export log",
+		"Off",
+		"On",
 		"8",
 		"12",
 		"16",
@@ -71,6 +74,18 @@ func TestSettingsViewAndPerPageCycle(t *testing.T) {
 	mm = next.(Model)
 	if mm.config.PlaylistsPerPage != 12 {
 		t.Fatalf("left should return to 12, got %d", mm.config.PlaylistsPerPage)
+	}
+
+	mm.cursor = 2
+	next, _ = mm.Update(tea.KeyMsg{Type: tea.KeyRight})
+	mm = next.(Model)
+	if mm.config.WriteExportLog {
+		t.Fatalf("export log should toggle off, got %v", mm.config.WriteExportLog)
+	}
+	next, _ = mm.Update(tea.KeyMsg{Type: tea.KeyLeft})
+	mm = next.(Model)
+	if !mm.config.WriteExportLog {
+		t.Fatalf("export log should toggle on, got %v", mm.config.WriteExportLog)
 	}
 
 	mm.cursor = len(mm.settingsRows()) - 1

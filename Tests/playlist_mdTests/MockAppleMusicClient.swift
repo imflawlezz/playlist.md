@@ -5,8 +5,10 @@ final class MockAppleMusicClient: AppleMusicClient, @unchecked Sendable {
     var status: AuthorizationStatus = .authorized
     var playlists: [PlaylistSummary] = []
     var tracksByPlaylistID: [String: [Track]] = [:]
+    var librarySongs: [Track] = []
     var shouldThrowOnFetchPlaylists = false
     var shouldThrowOnFetchTracks = false
+    var shouldThrowOnFetchLibrary = false
 
     func authorizationStatus() -> AuthorizationStatus {
         status
@@ -29,5 +31,12 @@ final class MockAppleMusicClient: AppleMusicClient, @unchecked Sendable {
             throw AppError.playlistFetchFailed("Test")
         }
         return tracksByPlaylistID[playlistID] ?? []
+    }
+
+    func fetchLibrarySongs() async throws -> [Track] {
+        if shouldThrowOnFetchLibrary {
+            throw AppError.libraryUnavailable
+        }
+        return librarySongs
     }
 }

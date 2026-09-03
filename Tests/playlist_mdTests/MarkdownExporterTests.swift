@@ -70,18 +70,32 @@ final class MarkdownExporterTests: XCTestCase {
             ),
         ]
 
-        let markdown = exporter.renderIndex(playlists: exported)
+        let markdown = exporter.renderIndex(playlists: exported, includeLibrary: true)
 
         XCTAssertEqual(
             markdown,
             """
             # Apple Music Playlists
 
+            - [Library](library.md)
+
             - [Chill](playlists/chill.md)
             - [Gaming](playlists/gaming.md)
 
             """
         )
+    }
+
+    func testRenderLibraryIncludesTable() {
+        let tracks = [
+            Track(title: "A", artist: "Artist", album: "Album", year: 2020, url: nil, position: 1),
+            Track(title: "B", artist: "Artist", album: "Album", year: nil, url: nil, position: 2),
+        ]
+        let markdown = exporter.renderLibrary(tracks)
+        XCTAssertTrue(markdown.hasPrefix("# Apple Music Library\n"))
+        XCTAssertTrue(markdown.contains("2 songs"))
+        XCTAssertTrue(markdown.contains("| 1 | A | Artist | Album | 2020 |"))
+        XCTAssertTrue(markdown.contains("| 2 | B | Artist | Album |  |"))
     }
 
     func testDeterministicOutputForSameInput() {

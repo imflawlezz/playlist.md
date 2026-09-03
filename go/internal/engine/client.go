@@ -97,10 +97,12 @@ type PlaylistsResponse struct {
 }
 
 type ExportResult struct {
-	ExportedPlaylists int      `json:"exported_playlists"`
-	ExportedTracks    int      `json:"exported_tracks"`
-	Output            string   `json:"output"`
-	RemovedStaleFiles []string `json:"removed_stale_files"`
+	ExportedPlaylists     int      `json:"exported_playlists"`
+	ExportedTracks        int      `json:"exported_tracks"`
+	ExportedLibraryTracks int      `json:"exported_library_tracks"`
+	Output                string   `json:"output"`
+	RemovedStaleFiles     []string `json:"removed_stale_files"`
+	LogPath               string   `json:"log_path,omitempty"`
 }
 
 type ProgressEvent struct {
@@ -121,13 +123,26 @@ func (c *Client) run(args ...string) (stdout []byte, stderr []byte, err error) {
 }
 
 func decodeError(stderr []byte, err error) error {
-	line := strings.TrimSpace(string(stderr))
-	if line != "" {
-		var resp ErrorResponse
-		if json.Unmarshal([]byte(line), &resp) == nil && resp.Error != "" {
-			return fmt.Errorf("%s", resp.Error)
+	text := strings.TrimSpace(string(stderr))
+	if text != "" {
+		lines := strings.Split(text, "\n")
+		// Export may emit progress JSON on stderr before {"error":"..."}; prefer the last error object.
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := strings.TrimSpace(lines[i])
+			if line == "" {
+				continue
+			}
+			var resp ErrorResponse
+			if json.Unmarshal([]byte(line), &resp) == nil && resp.Error != "" {
+				return fmt.Errorf("%s", resp.Error)
+			}
 		}
-		return fmt.Errorf("%s", line)
+		for i := len(lines) - 1; i >= 0; i-- {
+			line := strings.TrimSpace(lines[i])
+			if line != "" {
+				return fmt.Errorf("%s", line)
+			}
+		}
 	}
 	if err != nil {
 		return err
@@ -232,12 +247,26 @@ func (c *Client) IndexTracks(onPlaylist func(PlaylistDetail)) error {
 	return nil
 }
 
-func (c *Client) Export(output string, ids []string, exportAll bool, onProgress func(ProgressEvent)) (ExportResult, error) {
+func (c *Client) Export(output string, ids []string, exportAll bool, writeLogs bool, onProgress func(ProgressEvent)) (ExportResult, error) {
 	args := []string{"export", "--output", output}
 	if exportAll {
 		args = append(args, "--all")
 	} else if len(ids) > 0 {
 		args = append(args, "--ids", strings.Join(ids, ","))
+	}
+	return c.runExport(args, writeLogs, onProgress)
+}
+
+func (c *Client) ExportLibrary(output string, writeLogs bool, onProgress func(ProgressEvent)) (ExportResult, error) {
+	args := []string{"export", "--output", output, "--library"}
+	return c.runExport(args, writeLogs, onProgress)
+}
+
+func (c *Client) runExport(args []string, writeLogs bool, onProgress func(ProgressEvent)) (ExportResult, error) {
+	if writeLogs {
+		args = append(args, "--write-logs")
+	} else {
+		args = append(args, "--no-write-logs")
 	}
 
 	cmd := exec.Command(c.corePath, args...)
@@ -254,7 +283,8 @@ func (c *Client) Export(output string, ids []string, exportAll bool, onProgress 
 		return ExportResult{}, err
 	}
 
-	progressErr := readProgress(stderr, onProgress)
+	var errBuf bytes.Buffer
+	progressErr := readProgress(io.TeeReader(stderr, &errBuf), onProgress)
 	stdoutBytes, readErr := io.ReadAll(stdout)
 	waitErr := cmd.Wait()
 
@@ -265,7 +295,7 @@ func (c *Client) Export(output string, ids []string, exportAll bool, onProgress 
 		return ExportResult{}, readErr
 	}
 	if waitErr != nil {
-		return ExportResult{}, fmt.Errorf("%s export failed", CoreName)
+		return ExportResult{}, decodeError(errBuf.Bytes(), waitErr)
 	}
 
 	var result ExportResult
@@ -276,11 +306,6 @@ func (c *Client) Export(output string, ids []string, exportAll bool, onProgress 
 }
 
 func readProgress(r io.Reader, onProgress func(ProgressEvent)) error {
-	if onProgress == nil {
-		_, err := io.Copy(io.Discard, r)
-		return err
-	}
-
 	buf := make([]byte, 4096)
 	remaining := ""
 	for {
@@ -295,6 +320,9 @@ func readProgress(r io.Reader, onProgress func(ProgressEvent)) error {
 				line := strings.TrimSpace(remaining[:idx])
 				remaining = remaining[idx+1:]
 				if line == "" {
+					continue
+				}
+				if onProgress == nil {
 					continue
 				}
 				var event ProgressEvent

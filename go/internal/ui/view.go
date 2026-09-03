@@ -149,6 +149,8 @@ func (m Model) renderSettingsRow(row navRow, cursor bool, width int) string {
 		}
 	case rowSettingPerPage:
 		right = segmented(perPageLabelStrings(), indexOfInt(playlistsPerPageOptions, m.config.PlaylistsPerPage))
+	case rowSettingExportLog:
+		right = segmented([]string{"Off", "On"}, boolIndex(m.config.WriteExportLog))
 	default:
 		right = row.label
 	}
@@ -226,6 +228,8 @@ func (m Model) viewExport() string {
 	}
 
 	switch m.export.phase {
+	case "library":
+		b.WriteString("\n" + dimStyle.Render("Fetching library songs") + "\n")
 	case "writing":
 		b.WriteString("\n" + dimStyle.Render("Writing Markdown files") + "\n")
 	case "cleaning":
@@ -242,9 +246,17 @@ func (m Model) viewDone() string {
 	}
 	var b strings.Builder
 	b.WriteString(successStyle.Render("Export complete") + "\n\n")
-	b.WriteString(fmt.Sprintf("Playlists: %d\n", m.summary.ExportedPlaylists))
-	b.WriteString(fmt.Sprintf("Tracks: %d\n", m.summary.ExportedTracks))
+	if m.summary.ExportedPlaylists > 0 || m.summary.ExportedTracks > 0 {
+		b.WriteString(fmt.Sprintf("Playlists: %d\n", m.summary.ExportedPlaylists))
+		b.WriteString(fmt.Sprintf("Tracks: %d\n", m.summary.ExportedTracks))
+	}
+	if m.summary.ExportedLibraryTracks > 0 || (m.summary.ExportedPlaylists == 0 && m.summary.ExportedTracks == 0) {
+		b.WriteString(fmt.Sprintf("Library songs: %d\n", m.summary.ExportedLibraryTracks))
+	}
 	b.WriteString("Output: " + compactPath(m.summary.Output) + "\n")
+	if m.summary.LogPath != "" {
+		b.WriteString("Log: " + m.summary.LogPath + "\n")
+	}
 	if len(m.summary.RemovedStaleFiles) > 0 {
 		b.WriteString("\n" + dimStyle.Render(fmt.Sprintf("Removed %d stale files", len(m.summary.RemovedStaleFiles))) + "\n")
 	}

@@ -120,6 +120,8 @@ public enum CoreCLI {
         var output: String?
         var ids: [String] = []
         var exportAll = false
+        var exportLibraryOnly = false
+        var writeLogs = false
 
         var index = 0
         while index < arguments.count {
@@ -145,6 +147,15 @@ public enum CoreCLI {
             case "--all":
                 exportAll = true
                 index += 1
+            case "--library":
+                exportLibraryOnly = true
+                index += 1
+            case "--write-logs":
+                writeLogs = true
+                index += 1
+            case "--no-write-logs":
+                writeLogs = false
+                index += 1
             default:
                 JSONOutput.writeError("Unknown export flag: \(arg)")
                 return 1
@@ -156,38 +167,57 @@ public enum CoreCLI {
             return 1
         }
 
+        if exportLibraryOnly && (exportAll || !ids.isEmpty) {
+            JSONOutput.writeError("--library cannot be combined with --all or --ids")
+            return 1
+        }
+
         do {
             let outputDirectory = try services.fileSystem.resolveOutputDirectory(outputPath)
-            let summaries = try await services.playlistService.fetchPlaylistSummaries()
 
-            let selected: [PlaylistSummary]
-            if exportAll {
-                selected = summaries
-            } else if !ids.isEmpty {
-                let idSet = Set(ids)
-                selected = summaries.filter { idSet.contains($0.id) }
+            let summary: ExportSummary
+            if exportLibraryOnly {
+                summary = try await services.exportService.exportLibrary(
+                    to: outputDirectory,
+                    writeLogs: writeLogs
+                ) { progress in
+                    emitProgress(progress)
+                }
             } else {
-                JSONOutput.writeError("Specify --all or --ids")
-                return 1
-            }
+                let summaries = try await services.playlistService.fetchPlaylistSummaries()
 
-            guard !selected.isEmpty else {
-                JSONOutput.writeError("No playlists matched the export request")
-                return 1
-            }
+                let selected: [PlaylistSummary]
+                if exportAll {
+                    selected = summaries
+                } else if !ids.isEmpty {
+                    let idSet = Set(ids)
+                    selected = summaries.filter { idSet.contains($0.id) }
+                } else {
+                    JSONOutput.writeError("Specify --all, --ids, or --library")
+                    return 1
+                }
 
-            let summary = try await services.exportService.export(
-                summaries: selected,
-                to: outputDirectory
-            ) { progress in
-                emitProgress(progress)
+                guard !selected.isEmpty else {
+                    JSONOutput.writeError("No playlists matched the export request")
+                    return 1
+                }
+
+                summary = try await services.exportService.exportPlaylists(
+                    summaries: selected,
+                    to: outputDirectory,
+                    writeLogs: writeLogs
+                ) { progress in
+                    emitProgress(progress)
+                }
             }
 
             JSONOutput.write(ExportResultResponse(
                 exportedPlaylists: summary.exportedPlaylistCount,
                 exportedTracks: summary.exportedTrackCount,
+                exportedLibraryTracks: summary.exportedLibraryTrackCount,
                 output: summary.outputDirectory.path,
-                removedStaleFiles: summary.removedStaleFiles
+                removedStaleFiles: summary.removedStaleFiles,
+                logPath: summary.logPath
             ))
             return 0
         } catch {
@@ -200,6 +230,8 @@ public enum CoreCLI {
         switch progress.phase {
         case .fetchingPlaylist(let name, let index, let total):
             event = .fetching(name: name, index: index, total: total)
+        case .fetchingLibrary:
+            event = .library()
         case .writingFiles:
             event = .writing()
         case .cleaningStaleFiles:

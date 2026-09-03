@@ -21,6 +21,7 @@ func perPageLabelStrings() []string {
 type Config struct {
 	OutputDir        string `json:"output_dir"`
 	PlaylistsPerPage int    `json:"playlists_per_page"`
+	WriteExportLog   bool   `json:"write_export_log"`
 }
 
 func defaultOutputDir() string {
@@ -35,6 +36,7 @@ func defaultConfig() Config {
 	return Config{
 		OutputDir:        defaultOutputDir(),
 		PlaylistsPerPage: 12,
+		WriteExportLog:   true,
 	}
 }
 
@@ -59,11 +61,16 @@ func loadConfig() Config {
 	if err != nil {
 		return cfg
 	}
+	var raw map[string]json.RawMessage
+	_ = json.Unmarshal(data, &raw)
 	_ = json.Unmarshal(data, &cfg)
 	if cfg.OutputDir == "" {
 		cfg.OutputDir = defaultOutputDir()
 	}
 	cfg.PlaylistsPerPage = normalizePerPage(cfg.PlaylistsPerPage)
+	if _, ok := raw["write_export_log"]; !ok {
+		cfg.WriteExportLog = true
+	}
 	return cfg
 }
 
@@ -135,6 +142,13 @@ func indexOfInt(steps []int, cur int) int {
 		if n == cur {
 			return i
 		}
+	}
+	return 0
+}
+
+func boolIndex(on bool) int {
+	if on {
+		return 1
 	}
 	return 0
 }

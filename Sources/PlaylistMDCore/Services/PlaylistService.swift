@@ -31,6 +31,13 @@ struct PlaylistService: Sendable {
         return Playlist(id: summary.id, name: summary.name, tracks: tracks)
     }
 
+    func fetchLibrarySongs() async throws -> [Track] {
+        guard authorizationStatus() == .authorized else {
+            throw authorizationError(for: authorizationStatus())
+        }
+        return try await client.fetchLibrarySongs()
+    }
+
     private func authorizationError(for status: AuthorizationStatus) -> AppError {
         switch status {
         case .denied, .restricted:

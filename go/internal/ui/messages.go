@@ -74,6 +74,7 @@ const (
 	rowLoadPlaylists
 	rowRefresh
 	rowExport
+	rowExportLibrary
 	rowClearSelection
 	rowOpenFolder
 	rowSettings
@@ -82,6 +83,7 @@ const (
 	rowQuit
 	rowSettingPerPage
 	rowSettingOutput
+	rowSettingExportLog
 	rowSettingBack
 	rowDoneOpen
 	rowDoneContinue

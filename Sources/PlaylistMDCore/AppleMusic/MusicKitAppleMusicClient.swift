@@ -80,6 +80,66 @@ struct MusicKitAppleMusicClient: AppleMusicClient {
         }
     }
 
+    func fetchLibrarySongs() async throws -> [Track] {
+        let request = MusicLibraryRequest<Song>()
+        let response: MusicLibraryResponse<Song>
+        do {
+            response = try await request.response()
+        } catch {
+            throw mapError(error, context: "your library")
+        }
+
+        var collection = response.items
+        var songs: [Song] = []
+        songs.append(contentsOf: collection)
+
+        while collection.hasNextBatch {
+            do {
+                guard let nextBatch = try await collection.nextBatch(limit: 300) else {
+                    break
+                }
+                songs.append(contentsOf: nextBatch)
+                collection = nextBatch
+            } catch {
+                throw mapError(error, context: "your library")
+            }
+        }
+
+        var seen = Set<MusicItemID>()
+        var unique: [Song] = []
+        unique.reserveCapacity(songs.count)
+        for song in songs where seen.insert(song.id).inserted {
+            unique.append(song)
+        }
+
+        unique.sort {
+            let artist = $0.artistName.localizedCaseInsensitiveCompare($1.artistName)
+            if artist != .orderedSame {
+                return artist == .orderedAscending
+            }
+            let title = $0.title.localizedCaseInsensitiveCompare($1.title)
+            if title != .orderedSame {
+                return title == .orderedAscending
+            }
+            return $0.id.rawValue < $1.id.rawValue
+        }
+
+        return unique.enumerated().map { index, song in
+            normalizeSong(song, position: index + 1)
+        }
+    }
+
+    private func normalizeSong(_ song: Song, position: Int) -> Track {
+        Track(
+            title: song.title,
+            artist: song.artistName,
+            album: song.albumTitle ?? "",
+            year: song.releaseDate.map { Calendar.current.component(.year, from: $0) },
+            url: song.url,
+            position: position
+        )
+    }
+
     private func normalizeTrack(_ musicTrack: MusicKit.Track, position: Int) -> Track {
         Track(
             title: musicTrack.title,

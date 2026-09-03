@@ -96,7 +96,7 @@ func TestHomeViewHasFrameAndBottomHelp(t *testing.T) {
 	m.ensureCursor()
 	got := stripANSI(m.View())
 	for _, want := range []string{
-		"┌─ playlist-md v1.1.2 by imflawlezz",
+		"┌─ playlist-md v1.3.0 by imflawlezz",
 		"Output:",
 		"Apple Music:",
 		"Playlists:",
@@ -262,7 +262,8 @@ func TestHomeViewLooksLikeYtdl(t *testing.T) {
 		"2. Gaming",
 		"✓",
 		"Actions",
-		"Export selected",
+		"Export selected playlists",
+		"Export music library",
 		"Clear selection",
 		"Refresh library",
 		"Open folder",

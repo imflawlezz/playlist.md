@@ -37,6 +37,11 @@ struct FileSystemService: Sendable {
         try data.write(to: url, options: .atomic)
     }
 
+    func fileExists(_ relativePath: String, in outputDirectory: URL) -> Bool {
+        let url = outputDirectory.appendingPathComponent(relativePath)
+        return FileManager.default.fileExists(atPath: url.path)
+    }
+
     /// Deletes previous-manifest paths that are absent from the current export; leaves other files alone.
     func removeStaleFiles(previousManifest: ExportManifest?, currentRelativePaths: Set<String>, in outputDirectory: URL) throws -> [String] {
         guard let previousManifest else { return [] }
@@ -45,14 +50,14 @@ struct FileSystemService: Sendable {
         var removed: [String] = []
         let fileManager = FileManager.default
 
-        for entry in previousManifest.playlists {
-            guard !current.contains(entry.relativePath) else { continue }
+        for entry in previousManifest.managedRelativePaths {
+            guard !current.contains(entry) else { continue }
 
-            let fileURL = outputDirectory.appendingPathComponent(entry.relativePath)
+            let fileURL = outputDirectory.appendingPathComponent(entry)
             guard fileManager.fileExists(atPath: fileURL.path) else { continue }
 
             try fileManager.removeItem(at: fileURL)
-            removed.append(entry.relativePath)
+            removed.append(entry)
         }
 
         return removed.sorted()

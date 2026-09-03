@@ -51,7 +51,9 @@ func main() {
 func runExportCLI(args []string) int {
 	var output string
 	var exportAll bool
+	var exportLibrary bool
 	var ids []string
+	writeLogs := true
 
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
@@ -64,6 +66,8 @@ func runExportCLI(args []string) int {
 			i++
 		case "--all":
 			exportAll = true
+		case "--library":
+			exportLibrary = true
 		case "--ids":
 			if i+1 >= len(args) {
 				fmt.Fprintln(os.Stderr, "--ids requires a comma-separated list")
@@ -76,6 +80,10 @@ func runExportCLI(args []string) int {
 				}
 			}
 			i++
+		case "--write-logs":
+			writeLogs = true
+		case "--no-write-logs":
+			writeLogs = false
 		default:
 			fmt.Fprintf(os.Stderr, "unknown export flag: %s\n", args[i])
 			return 1
@@ -86,6 +94,10 @@ func runExportCLI(args []string) int {
 		fmt.Fprintln(os.Stderr, "--output is required")
 		return 1
 	}
+	if exportLibrary && (exportAll || len(ids) > 0) {
+		fmt.Fprintln(os.Stderr, "--library cannot be combined with --all or --ids")
+		return 1
+	}
 
 	client, err := engine.NewClient()
 	if err != nil {
@@ -93,16 +105,25 @@ func runExportCLI(args []string) int {
 		return 1
 	}
 
-	result, err := client.Export(output, ids, exportAll, func(event engine.ProgressEvent) {
+	onProgress := func(event engine.ProgressEvent) {
 		switch event.Phase {
 		case "fetching":
 			fmt.Fprintf(os.Stderr, "Fetching [%d/%d]: %s\n", event.Index, event.Total, event.Name)
+		case "library":
+			fmt.Fprintln(os.Stderr, "Fetching library songs...")
 		case "writing":
 			fmt.Fprintln(os.Stderr, "Writing Markdown files...")
 		case "cleaning":
 			fmt.Fprintln(os.Stderr, "Cleaning up stale exports...")
 		}
-	})
+	}
+
+	var result engine.ExportResult
+	if exportLibrary {
+		result, err = client.ExportLibrary(output, writeLogs, onProgress)
+	} else {
+		result, err = client.Export(output, ids, exportAll, writeLogs, onProgress)
+	}
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
