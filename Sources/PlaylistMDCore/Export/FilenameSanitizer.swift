@@ -4,7 +4,8 @@ enum FilenameSanitizer {
     private static let invalidCharacterSet: CharacterSet = {
         var set = CharacterSet()
         set.formUnion(.controlCharacters)
-        set.insert(charactersIn: "/\\:?*\"<>|")
+        // Dots are separators too: trailing "..." and "../" must not leave ".." in the slug.
+        set.insert(charactersIn: "/\\:?*\"<>|.")
         set.insert(charactersIn: "\u{0000}")
         return set
     }()
@@ -77,6 +78,7 @@ enum FilenameSanitizer {
         guard !filename.isEmpty else { return false }
         guard !filename.contains("..") else { return false }
         guard !filename.hasPrefix("/") else { return false }
+        guard !filename.hasPrefix(".") else { return false }
         return filename.allSatisfy { char in
             !char.isNewline && char != "\0"
         }

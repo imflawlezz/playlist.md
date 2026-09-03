@@ -19,8 +19,27 @@ final class FilenameSanitizerTests: XCTestCase {
     }
 
     func testSlugPreventsPathTraversal() {
-        XCTAssertEqual(FilenameSanitizer.slug(from: "../escape"), "..-escape")
+        XCTAssertEqual(FilenameSanitizer.slug(from: "../escape"), "escape")
+        XCTAssertTrue(FilenameSanitizer.isSafeRelativeFilename("escape.md"))
         XCTAssertFalse(FilenameSanitizer.isSafeRelativeFilename("../escape.md"))
+        XCTAssertFalse(FilenameSanitizer.isSafeRelativeFilename("..-escape.md"))
+    }
+
+    func testSlugStripsTrailingDots() {
+        XCTAssertEqual(
+            FilenameSanitizer.slug(from: "я последний самурай..."),
+            "я-последний-самурай"
+        )
+        let filename = FilenameSanitizer.assignFilenames(for: [
+            PlaylistSummary(id: "1", name: "я последний самурай...")
+        ])["1"]
+        XCTAssertEqual(filename, "я-последний-самурай.md")
+        XCTAssertTrue(FilenameSanitizer.isSafeRelativeFilename(filename ?? ""))
+    }
+
+    func testSlugCollapsesInternalDots() {
+        XCTAssertEqual(FilenameSanitizer.slug(from: "foo..bar"), "foo-bar")
+        XCTAssertEqual(FilenameSanitizer.slug(from: "v1.2.3 hits"), "v1-2-3-hits")
     }
 
     func testDuplicateFilenamesAreDeterministic() {
